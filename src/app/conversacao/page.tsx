@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ChatBubble from '@/components/ChatBubble'
 import StudyTimer from '@/components/StudyTimer'
-import { Send, Trash2, MessageCircle } from 'lucide-react'
+import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -26,6 +26,8 @@ export default function ConversacaoPage() {
   const [input, setInput] = useState('')
   const [streaming, setStreaming] = useState(false)
   const [userId, setUserId] = useState('')
+  const [isListening, setIsListening] = useState(false)
+  const [autoSpeak, setAutoSpeak] = useState(true)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -40,6 +42,45 @@ export default function ConversacaoPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const speak = useCallback((text: string) => {
+    speechSynthesis.cancel()
+    const clean = text.replace(/\[Correction:.*?\]/g, '').replace(/\[.*?\]/g, '').trim()
+    if (!clean) return
+    const utterance = new SpeechSynthesisUtterance(clean)
+    utterance.lang = 'en-US'
+    utterance.rate = 0.85
+    speechSynthesis.speak(utterance)
+  }, [])
+
+  const startListening = useCallback(() => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const W = window as any
+    const SpeechRecognitionCtor = W.SpeechRecognition || W.webkitSpeechRecognition
+    if (!SpeechRecognitionCtor) { alert('Seu navegador não suporta reconhecimento de voz. Use Chrome.'); return }
+
+    const recognition = new SpeechRecognitionCtor()
+    recognition.lang = 'en-US'
+    recognition.interimResults = true
+    recognition.continuous = false
+
+    recognition.onresult = (event: { results: { length: number; [i: number]: { isFinal: boolean; 0: { transcript: string } } } }) => {
+      let transcript = ''
+      for (let i = 0; i < event.results.length; i++) {
+        transcript += event.results[i][0].transcript
+      }
+      setInput(transcript)
+      if (event.results[event.results.length - 1].isFinal) {
+        setIsListening(false)
+      }
+    }
+
+    recognition.onerror = () => setIsListening(false)
+    recognition.onend = () => setIsListening(false)
+
+    setIsListening(true)
+    recognition.start()
+  }, [])
 
   const startTopic = (topic: string) => {
     setMessages([])
@@ -76,13 +117,17 @@ export default function ConversacaoPage() {
         setMessages([...newMessages, { role: 'assistant', content: assistantContent }])
       }
 
+      if (autoSpeak && assistantContent) {
+        speak(assistantContent)
+      }
+
       await supabase.from('conversations').insert({
         user_id: userId,
         topic: messages.length === 0 ? text.trim().slice(0, 100) : 'continuation',
         messages: [...newMessages, { role: 'assistant', content: assistantContent }],
       })
     } catch {
-      setMessages([...newMessages, { role: 'assistant', content: 'Erro ao conectar com a IA. Verifique sua API key do Gemini.' }])
+      setMessages([...newMessages, { role: 'assistant', content: 'Erro ao conectar com a IA. Verifique sua API key.' }])
     } finally {
       setStreaming(false)
     }
@@ -99,13 +144,20 @@ export default function ConversacaoPage() {
           </div>
           <div>
             <h1 className="text-xl font-bold">Conversação</h1>
-            <p className="text-xs text-[var(--muted)]">Pratique inglês com IA</p>
+            <p className="text-xs text-[var(--muted)]">Pratique inglês com IA — fale ou digite</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <StudyTimer feature="conversacao" />
+          <button
+            onClick={() => { setAutoSpeak(!autoSpeak); if (autoSpeak) speechSynthesis.cancel() }}
+            className={`btn-ghost p-2 ${autoSpeak ? 'text-[var(--primary)]' : 'text-[var(--muted)]'}`}
+            title={autoSpeak ? 'Desativar leitura automática' : 'Ativar leitura automática'}
+          >
+            {autoSpeak ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
           {messages.length > 0 && (
-            <button onClick={() => setMessages([])} className="btn-ghost p-2"><Trash2 size={16} /></button>
+            <button onClick={() => { setMessages([]); speechSynthesis.cancel() }} className="btn-ghost p-2"><Trash2 size={16} /></button>
           )}
         </div>
       </div>
@@ -118,7 +170,8 @@ export default function ConversacaoPage() {
               <MessageCircle size={28} className="text-white" />
             </div>
             <p className="font-semibold mb-1">Vamos conversar!</p>
-            <p className="text-[var(--muted)] text-sm mb-6">Escolha um tema para começar:</p>
+            <p className="text-[var(--muted)] text-sm mb-2">Fale pelo microfone ou digite</p>
+            <p className="text-[var(--muted)] text-xs mb-6">Escolha um tema para começar:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
               {TOPICS.map((topic) => (
                 <button
@@ -134,7 +187,7 @@ export default function ConversacaoPage() {
         ) : (
           <>
             {messages.map((msg, i) => (
-              <ChatBubble key={i} role={msg.role} content={msg.content} />
+              <ChatBubble key={i} role={msg.role} content={msg.content} onSpeak={msg.role === 'assistant' ? () => speak(msg.content) : undefined} />
             ))}
             {streaming && messages[messages.length - 1]?.content === '' && (
               <div className="flex justify-start mb-3">
@@ -154,11 +207,23 @@ export default function ConversacaoPage() {
 
       {/* Input */}
       <div className="flex gap-2">
+        <button
+          onClick={isListening ? () => setIsListening(false) : startListening}
+          disabled={streaming}
+          className={`flex items-center justify-center rounded-2xl px-4 transition-all ${
+            isListening
+              ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30'
+              : 'bg-[var(--card)] border border-[var(--card-border)] text-[var(--muted)] hover:text-[var(--primary)] hover:border-[var(--primary)]'
+          }`}
+          title={isListening ? 'Parar de ouvir' : 'Falar em inglês'}
+        >
+          {isListening ? <MicOff size={20} /> : <Mic size={20} />}
+        </button>
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && sendMessage()}
-          placeholder="Type in English..."
+          placeholder={isListening ? 'Ouvindo... fale em inglês' : 'Type or speak in English...'}
           className="input flex-1"
           style={{ borderRadius: '16px', padding: '0.875rem 1.25rem' }}
           disabled={streaming}
