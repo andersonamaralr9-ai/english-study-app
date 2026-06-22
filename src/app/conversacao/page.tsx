@@ -5,9 +5,18 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import ChatBubble from '@/components/ChatBubble'
 import StudyTimer from '@/components/StudyTimer'
-import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX } from 'lucide-react'
+import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX, GraduationCap } from 'lucide-react'
 
 type Message = { role: 'user' | 'assistant'; content: string }
+type Level = 'A1' | 'A2' | 'B1' | 'B2' | 'C1'
+
+const LEVELS: { key: Level; label: string; desc: string }[] = [
+  { key: 'A1', label: 'A1', desc: 'Iniciante' },
+  { key: 'A2', label: 'A2', desc: 'Básico' },
+  { key: 'B1', label: 'B1', desc: 'Intermediário' },
+  { key: 'B2', label: 'B2', desc: 'Intermediário+' },
+  { key: 'C1', label: 'C1', desc: 'Avançado' },
+]
 
 const TOPICS = [
   'Me apresentar em inglês',
@@ -28,6 +37,7 @@ export default function ConversacaoPage() {
   const [userId, setUserId] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [autoSpeak, setAutoSpeak] = useState(true)
+  const [level, setLevel] = useState<Level>('A1')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -100,7 +110,7 @@ export default function ConversacaoPage() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: newMessages, mode: 'conversation' }),
+        body: JSON.stringify({ messages: newMessages, mode: 'conversation', level }),
       })
 
       const reader = res.body?.getReader()
@@ -149,6 +159,15 @@ export default function ConversacaoPage() {
         </div>
         <div className="flex items-center gap-2">
           <StudyTimer feature="conversacao" />
+          <div className="flex items-center gap-0.5 bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-0.5">
+            {LEVELS.map(({ key, label }) => (
+              <button key={key} onClick={() => { setLevel(key); if (messages.length > 0) { setMessages([]); speechSynthesis.cancel() } }}
+                title={LEVELS.find(l => l.key === key)?.desc}
+                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${level === key ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           <button
             onClick={() => { setAutoSpeak(!autoSpeak); if (autoSpeak) speechSynthesis.cancel() }}
             className={`btn-ghost p-2 ${autoSpeak ? 'text-[var(--primary)]' : 'text-[var(--muted)]'}`}
@@ -170,8 +189,12 @@ export default function ConversacaoPage() {
               <MessageCircle size={28} className="text-white" />
             </div>
             <p className="font-semibold mb-1">Vamos conversar!</p>
-            <p className="text-[var(--muted)] text-sm mb-2">Fale pelo microfone ou digite</p>
-            <p className="text-[var(--muted)] text-xs mb-6">Escolha um tema para começar:</p>
+            <p className="text-[var(--muted)] text-sm mb-2">Fale pelo microfone ou digite — a IA corrige seus erros</p>
+            <div className="flex items-center gap-2 mb-4">
+              <GraduationCap size={14} className="text-[var(--primary)]" />
+              <span className="text-sm text-[var(--muted)]">Nível: <strong className="text-[var(--primary)]">{level}</strong> — {LEVELS.find(l => l.key === level)?.desc}</span>
+            </div>
+            <p className="text-[var(--muted)] text-xs mb-4">Escolha um tema para começar:</p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-lg w-full">
               {TOPICS.map((topic) => (
                 <button

@@ -1,9 +1,12 @@
-import { getClient, SYSTEM_PROMPTS } from '@/lib/claude'
+import { getClient, getConversationPrompt, SYSTEM_PROMPTS, type Level } from '@/lib/claude'
 
 export async function POST(req: Request) {
-  const { messages, mode } = await req.json()
+  const { messages, mode, level = 'A1' } = await req.json()
 
-  const systemPrompt = mode === 'conversation' ? SYSTEM_PROMPTS.conversation : SYSTEM_PROMPTS.writing
+  const systemPrompt = mode === 'conversation'
+    ? getConversationPrompt(level as Level)
+    : SYSTEM_PROMPTS.writing
+
   const client = getClient()
 
   const stream = await client.chat.completions.create({
