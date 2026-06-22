@@ -49,8 +49,8 @@ CORRECTION FORMAT — ALWAYS use this when the student makes a mistake:
 After your conversational response, add a "---" separator, then list corrections like this:
 
 🔧 Corrections:
-• "${what they said wrong}" → "${correct form}"
-  📝 ${explanation in Portuguese}
+• "[what they said wrong]" → "[correct form]"
+  📝 [explanation in Portuguese]
 
 If the student made NO mistakes, say "✅ Sem erros! Muito bem!" after the separator.
 
