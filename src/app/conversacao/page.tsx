@@ -39,6 +39,7 @@ export default function ConversacaoPage() {
   const [autoSpeak, setAutoSpeak] = useState(true)
   const [level, setLevel] = useState<Level>('A1')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const autoSendRef = useRef<string | null>(null)
 
   useEffect(() => {
     const check = async () => {
@@ -52,6 +53,16 @@ export default function ConversacaoPage() {
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  // Auto-send after voice recognition finishes
+  useEffect(() => {
+    if (!isListening && autoSendRef.current && !streaming) {
+      const text = autoSendRef.current
+      autoSendRef.current = null
+      sendWithText(text)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isListening])
 
   const speak = useCallback((text: string) => {
     speechSynthesis.cancel()
@@ -82,6 +93,9 @@ export default function ConversacaoPage() {
       setInput(transcript)
       if (event.results[event.results.length - 1].isFinal) {
         setIsListening(false)
+        if (transcript.trim()) {
+          autoSendRef.current = transcript.trim()
+        }
       }
     }
 
