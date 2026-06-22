@@ -66,22 +66,32 @@ CONVERSATION RULES:
 IMPORTANT: Never skip the correction section. The student depends on it to learn.`
 }
 
-export const SYSTEM_PROMPTS = {
-  writing: `You are an English writing tutor for a Brazilian Portuguese speaker.
+export function getWritingPrompt(level: Level): string {
+  const cfg = LEVEL_CONFIG[level]
+  return `You are an English writing tutor for a Brazilian Portuguese speaker at ${level} (${cfg.description}) level.
+Expected grammar: ${cfg.grammar}
 
 When correcting their writing:
 1. First, show the corrected version of their text
 2. Then list each correction with explanation IN PORTUGUESE
 3. Use this format for each correction:
-   ❌ Original: "what they wrote"
-   ✅ Corrected: "correct version"
+   ❌ Original: "[what they wrote]"
+   ✅ Corrected: "[correct version]"
    📝 Explicação: explanation in Portuguese
 
-Keep explanations simple and encouraging. Focus on the most important errors first.`,
+Keep explanations simple and encouraging. Focus on the most important errors first.
+Adapt your complexity expectations to the ${level} level.`
+}
 
-  exercise: `You are an English exercise generator for a Brazilian student.
-Always respond with valid JSON only, no markdown, no code fences. Generate exercises appropriate for the student's level.`,
+export function getExercisePrompt(level: Level): string {
+  const cfg = LEVEL_CONFIG[level]
+  return `You are an English exercise generator for a Brazilian student at ${level} (${cfg.description}) level.
+Grammar scope: ${cfg.grammar}
+Vocabulary scope: ${cfg.vocabulary}
+Always respond with valid JSON only, no markdown, no code fences. Generate exercises appropriate for ${level} level.`
+}
 
+export const SYSTEM_PROMPTS = {
   vocabulary: `You are helping a Brazilian Portuguese speaker learn English vocabulary.
 When asked to generate an example sentence, create a simple, practical sentence using the word.
 Explain the usage briefly in Portuguese.`,

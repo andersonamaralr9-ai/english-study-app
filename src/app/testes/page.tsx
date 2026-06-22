@@ -6,12 +6,14 @@ import { supabase } from '@/lib/supabase'
 import type { VocabWord } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { CheckCircle, XCircle, RefreshCw, ClipboardList, Trophy, BookOpen, Languages, AlignLeft } from 'lucide-react'
+import { useLevel } from '@/components/LevelContext'
 
 type TestType = 'vocabulary' | 'fill-blank' | 'translation'
 type Question = { question: string; correct: string; options: string[]; hint?: string }
 
 export default function TestesPage() {
   const router = useRouter()
+  const { level } = useLevel()
   const [userId, setUserId] = useState('')
   const [testType, setTestType] = useState<TestType | null>(null)
   const [questions, setQuestions] = useState<Question[]>([])
@@ -48,7 +50,7 @@ export default function TestesPage() {
     setLoading(true); setTestType(type)
     try {
       const vocabWords = words.slice(0, 20).map((w) => ({ english: w.english, portuguese: w.portuguese }))
-      const res = await fetch('/api/exercise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, words: vocabWords, count: 8 }) })
+      const res = await fetch('/api/exercise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, words: vocabWords, count: 8, level }) })
       const data = await res.json()
       let qs: Question[] = []
       if (type === 'fill-blank' && data.questions) qs = data.questions.map((q: { sentence: string; answer: string; options: string[]; translation: string }) => ({ question: q.sentence, correct: q.answer, options: q.options, hint: q.translation }))

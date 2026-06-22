@@ -1,11 +1,11 @@
-import { getClient, getConversationPrompt, SYSTEM_PROMPTS, type Level } from '@/lib/claude'
+import { getClient, getConversationPrompt, getWritingPrompt, type Level } from '@/lib/claude'
 
 export async function POST(req: Request) {
   const { messages, mode, level = 'A1' } = await req.json()
 
   const systemPrompt = mode === 'conversation'
     ? getConversationPrompt(level as Level)
-    : SYSTEM_PROMPTS.writing
+    : getWritingPrompt(level as Level)
 
   const client = getClient()
 

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { PenTool, Sparkles, History } from 'lucide-react'
+import { useLevel } from '@/components/LevelContext'
 
 const PROMPTS = [
   'Describe your daily routine.',
@@ -19,6 +20,7 @@ const PROMPTS = [
 
 export default function EscritaPage() {
   const router = useRouter()
+  const { level } = useLevel()
   const [userId, setUserId] = useState('')
   const [prompt, setPrompt] = useState('')
   const [text, setText] = useState('')
@@ -48,6 +50,7 @@ export default function EscritaPage() {
         body: JSON.stringify({
           messages: [{ role: 'user', content: `Please correct my English writing. The prompt was: "${prompt}"\n\nMy text:\n${text}` }],
           mode: 'writing',
+          level,
         }),
       })
       const reader = res.body?.getReader()

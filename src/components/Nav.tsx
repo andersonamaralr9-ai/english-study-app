@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap } from 'lucide-react'
+import { useLevel, LEVELS } from './LevelContext'
 
 const links = [
   { href: '/', label: 'Início', icon: Home },
@@ -18,6 +19,7 @@ const links = [
 export default function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
+  const { level, setLevel } = useLevel()
 
   if (pathname === '/login') return null
 
@@ -52,6 +54,17 @@ export default function Nav() {
                   </Link>
                 )
               })}
+            </div>
+
+            {/* Level selector */}
+            <div className="flex items-center gap-1 bg-[var(--primary-bg)]/50 rounded-xl p-0.5">
+              <GraduationCap size={14} className="text-[var(--primary)] ml-1.5" />
+              {LEVELS.map(({ key, label, desc }) => (
+                <button key={key} onClick={() => setLevel(key)} title={desc}
+                  className={`px-1.5 py-1 rounded-lg text-[10px] font-bold transition-all ${level === key ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
+                  {label}
+                </button>
+              ))}
             </div>
 
             {/* Mobile menu button */}

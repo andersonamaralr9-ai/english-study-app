@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { Volume2, Mic, MicOff, RefreshCw, CheckCircle, XCircle, Headphones } from 'lucide-react'
+import { useLevel } from '@/components/LevelContext'
 
 type Sentence = { text: string; translation: string }
 
@@ -21,6 +22,7 @@ const SAMPLE_SENTENCES: Sentence[] = [
 
 export default function EscutaPage() {
   const router = useRouter()
+  const { level } = useLevel()
   const [sentences, setSentences] = useState<Sentence[]>(SAMPLE_SENTENCES)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [userInput, setUserInput] = useState('')
@@ -51,7 +53,7 @@ export default function EscutaPage() {
       const res = await fetch('/api/exercise', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'dictation', count: 8 }),
+        body: JSON.stringify({ type: 'dictation', count: 8, level }),
       })
       const data = await res.json()
       if (data.sentences) { setSentences(data.sentences); setCurrentIndex(0); setScore({ correct: 0, total: 0 }); setShowResult(false); setUserInput('') }

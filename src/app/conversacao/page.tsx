@@ -6,17 +6,9 @@ import { supabase } from '@/lib/supabase'
 import ChatBubble from '@/components/ChatBubble'
 import StudyTimer from '@/components/StudyTimer'
 import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX, GraduationCap } from 'lucide-react'
+import { useLevel, LEVELS } from '@/components/LevelContext'
 
 type Message = { role: 'user' | 'assistant'; content: string }
-type Level = 'A1' | 'A2' | 'B1' | 'B2' | 'C1'
-
-const LEVELS: { key: Level; label: string; desc: string }[] = [
-  { key: 'A1', label: 'A1', desc: 'Iniciante' },
-  { key: 'A2', label: 'A2', desc: 'Básico' },
-  { key: 'B1', label: 'B1', desc: 'Intermediário' },
-  { key: 'B2', label: 'B2', desc: 'Intermediário+' },
-  { key: 'C1', label: 'C1', desc: 'Avançado' },
-]
 
 const TOPICS = [
   'Me apresentar em inglês',
@@ -37,7 +29,7 @@ export default function ConversacaoPage() {
   const [userId, setUserId] = useState('')
   const [isListening, setIsListening] = useState(false)
   const [autoSpeak, setAutoSpeak] = useState(true)
-  const [level, setLevel] = useState<Level>('A1')
+  const { level } = useLevel()
   const bottomRef = useRef<HTMLDivElement>(null)
   const autoSendRef = useRef<string | null>(null)
 
@@ -173,15 +165,6 @@ export default function ConversacaoPage() {
         </div>
         <div className="flex items-center gap-2">
           <StudyTimer feature="conversacao" />
-          <div className="flex items-center gap-0.5 bg-[var(--card)] border border-[var(--card-border)] rounded-xl p-0.5">
-            {LEVELS.map(({ key, label }) => (
-              <button key={key} onClick={() => { setLevel(key); if (messages.length > 0) { setMessages([]); speechSynthesis.cancel() } }}
-                title={LEVELS.find(l => l.key === key)?.desc}
-                className={`px-2 py-1 rounded-lg text-xs font-bold transition-all ${level === key ? 'bg-[var(--primary)] text-white shadow-sm' : 'text-[var(--muted)] hover:text-[var(--foreground)]'}`}>
-                {label}
-              </button>
-            ))}
-          </div>
           <button
             onClick={() => { setAutoSpeak(!autoSpeak); if (autoSpeak) speechSynthesis.cancel() }}
             className={`btn-ghost p-2 ${autoSpeak ? 'text-[var(--primary)]' : 'text-[var(--muted)]'}`}
