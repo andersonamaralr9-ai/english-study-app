@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { Volume2, Mic, MicOff, RefreshCw, CheckCircle, XCircle, Headphones } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
+import { triggerStudyTimer } from '@/components/StudyTimer'
 
 type Sentence = { text: string; translation: string }
 
@@ -62,6 +63,7 @@ export default function EscutaPage() {
   }
 
   const checkAnswer = () => {
+    triggerStudyTimer()
     setShowResult(true)
     const correct = userInput.trim().toLowerCase().replace(/[.,!?]/g, '') === sentences[currentIndex].text.toLowerCase().replace(/[.,!?]/g, '')
     setScore({ correct: score.correct + (correct ? 1 : 0), total: score.total + 1 })

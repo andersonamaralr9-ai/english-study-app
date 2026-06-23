@@ -7,6 +7,7 @@ import ChatBubble from '@/components/ChatBubble'
 import StudyTimer from '@/components/StudyTimer'
 import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX, GraduationCap } from 'lucide-react'
 import { useLevel, LEVELS } from '@/components/LevelContext'
+import { triggerStudyTimer } from '@/components/StudyTimer'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 
@@ -106,6 +107,7 @@ export default function ConversacaoPage() {
   const sendWithText = async (text: string) => {
     if (!text.trim() || streaming) return
 
+    triggerStudyTimer()
     const userMsg: Message = { role: 'user', content: text.trim() }
     const newMessages = [...messages, userMsg]
     setMessages(newMessages)

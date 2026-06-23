@@ -7,6 +7,7 @@ import type { VocabWord } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { CheckCircle, XCircle, RefreshCw, ClipboardList, Trophy, BookOpen, Languages, AlignLeft } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
+import { triggerStudyTimer } from '@/components/StudyTimer'
 
 type TestType = 'vocabulary' | 'fill-blank' | 'translation'
 type Question = { question: string; correct: string; options: string[]; hint?: string }
@@ -62,6 +63,7 @@ export default function TestesPage() {
 
   const handleAnswer = (answer: string) => {
     if (selected) return
+    triggerStudyTimer()
     setSelected(answer)
     const isCorrect = answer.toLowerCase().trim() === questions[currentQ].correct.toLowerCase().trim()
     if (isCorrect) setScore(score + 1)

@@ -2,17 +2,31 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Clock } from 'lucide-react'
+import { Clock, Play } from 'lucide-react'
 
 export default function StudyTimer({ feature }: { feature: string }) {
   const [seconds, setSeconds] = useState(0)
+  const [started, setStarted] = useState(false)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const savedRef = useRef(false)
 
+  const start = useCallback(() => {
+    if (started) return
+    setStarted(true)
+  }, [started])
+
+  // Expose start globally so pages can call it
   useEffect(() => {
-    intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+    (window as unknown as Record<string, () => void>).__startStudyTimer = start
+    return () => { delete (window as unknown as Record<string, unknown>).__startStudyTimer }
+  }, [start])
+
+  useEffect(() => {
+    if (started) {
+      intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+    }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
-  }, [])
+  }, [started])
 
   const save = useCallback(async () => {
     if (seconds < 30 || savedRef.current) return
@@ -50,9 +64,16 @@ export default function StudyTimer({ feature }: { feature: string }) {
   }
 
   return (
-    <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-sm font-medium">
-      <Clock size={14} />
+    <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${
+      started ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' : 'bg-gray-500/10 text-[var(--muted)]'
+    }`}>
+      {started ? <Clock size={14} /> : <Play size={14} />}
       <span className="font-mono">{format(seconds)}</span>
     </div>
   )
+}
+
+export function triggerStudyTimer() {
+  const fn = (window as unknown as Record<string, (() => void) | undefined>).__startStudyTimer
+  if (fn) fn()
 }

@@ -9,6 +9,7 @@ import { calculateSRS, isDueForReview } from '@/lib/srs'
 import Flashcard from '@/components/Flashcard'
 import StudyTimer from '@/components/StudyTimer'
 import { Plus, BookOpen, RotateCcw, Search, Trash2 } from 'lucide-react'
+import { triggerStudyTimer } from '@/components/StudyTimer'
 
 type Tab = 'list' | 'add' | 'review'
 
@@ -44,6 +45,7 @@ export default function VocabularioPage() {
   const handleAdd = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!english.trim() || !portuguese.trim()) return
+    triggerStudyTimer()
     const today = new Date().toISOString().split('T')[0]
     const { data, error } = await supabase.from('vocab_words').insert({
       user_id: userId, english: english.trim().toLowerCase(), portuguese: portuguese.trim().toLowerCase(),
@@ -59,6 +61,7 @@ export default function VocabularioPage() {
   }
 
   const handleRate = async (quality: number) => {
+    triggerStudyTimer()
     const word = dueWords[currentIndex]
     const result = calculateSRS(quality, word.repetitions, word.ease_factor, word.interval)
     await supabase.from('vocab_words').update({

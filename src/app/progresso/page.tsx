@@ -3,35 +3,48 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import type { VocabWord, StudySession, TestResult } from '@/lib/supabase'
+import type { VocabWord, StudySession, TestResult, WritingEntry, Conversation } from '@/lib/supabase'
 import { getCEFRLevel } from '@/lib/constants'
-import { BarChart3, GraduationCap, BookOpen, Clock, Trophy } from 'lucide-react'
+import { BarChart3, GraduationCap, BookOpen, Clock, Trophy, MessageCircle, PenTool, Headphones, TrendingUp, Award } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function ProgressoPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [vocabCount, setVocabCount] = useState(0)
+  const [masteredCount, setMasteredCount] = useState(0)
+  const [learningCount, setLearningCount] = useState(0)
   const [studyData, setStudyData] = useState<{ date: string; minutes: number }[]>([])
   const [testData, setTestData] = useState<{ date: string; score: number }[]>([])
   const [totalMinutes, setTotalMinutes] = useState(0)
   const [totalTests, setTotalTests] = useState(0)
   const [avgScore, setAvgScore] = useState(0)
   const [vocabByCategory, setVocabByCategory] = useState<{ category: string; count: number }[]>([])
+  const [conversationCount, setConversationCount] = useState(0)
+  const [writingCount, setWritingCount] = useState(0)
+  const [weakWords, setWeakWords] = useState<VocabWord[]>([])
+  const [recentWords, setRecentWords] = useState<VocabWord[]>([])
+  const [featureBreakdown, setFeatureBreakdown] = useState<{ feature: string; minutes: number }[]>([])
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [vocabRes, sessionsRes, testsRes] = await Promise.all([
+      const [vocabRes, sessionsRes, testsRes, convoRes, writingRes] = await Promise.all([
         supabase.from('vocab_words').select('*').eq('user_id', user.id),
         supabase.from('study_sessions').select('*').eq('user_id', user.id).order('date', { ascending: true }),
         supabase.from('test_results').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+        supabase.from('conversations').select('id').eq('user_id', user.id),
+        supabase.from('writing_entries').select('id').eq('user_id', user.id),
       ])
 
       const words = (vocabRes.data || []) as VocabWord[]
       setVocabCount(words.length)
+      setMasteredCount(words.filter(w => w.repetitions >= 3 && w.ease_factor >= 2.3).length)
+      setLearningCount(words.filter(w => w.repetitions > 0 && w.repetitions < 3).length)
+      setWeakWords(words.filter(w => w.ease_factor < 2.0 || (w.repetitions > 0 && w.interval <= 1)).sort((a, b) => a.ease_factor - b.ease_factor).slice(0, 10))
+      setRecentWords(words.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5))
 
       const catMap: Record<string, number> = {}
       words.forEach((w) => { catMap[w.category] = (catMap[w.category] || 0) + 1 })
@@ -39,6 +52,12 @@ export default function ProgressoPage() {
 
       const sessions = (sessionsRes.data || []) as StudySession[]
       setTotalMinutes(sessions.reduce((sum, s) => sum + s.minutes, 0))
+
+      // Feature breakdown
+      const featureMap: Record<string, number> = {}
+      sessions.forEach(s => { featureMap[s.feature] = (featureMap[s.feature] || 0) + s.minutes })
+      const featureNames: Record<string, string> = { conversacao: 'Conversação', escrita: 'Escrita', escuta: 'Escuta', testes: 'Testes', vocabulario: 'Vocabulário' }
+      setFeatureBreakdown(Object.entries(featureMap).map(([feature, minutes]) => ({ feature: featureNames[feature] || feature, minutes })).sort((a, b) => b.minutes - a.minutes))
 
       const dayMap: Record<string, number> = {}
       const today = new Date()
@@ -54,6 +73,9 @@ export default function ProgressoPage() {
         setTestData(tests.slice(-20).map((t) => ({ date: new Date(t.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), score: Math.round((t.score / t.total) * 100) })))
       }
 
+      setConversationCount((convoRes.data || []).length)
+      setWritingCount((writingRes.data || []).length)
+
       setLoading(false)
     }
     load()
@@ -62,6 +84,7 @@ export default function ProgressoPage() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="spinner" /></div>
 
   const cefr = getCEFRLevel(vocabCount, avgScore)
+  const newCount = vocabCount - masteredCount - learningCount
 
   return (
     <div className="space-y-6">
@@ -84,21 +107,102 @@ export default function ProgressoPage() {
           </div>
           <p className="text-5xl font-bold">{cefr.level}</p>
           <p className="text-white/70">{cefr.description}</p>
-          <div className="mt-4 grid grid-cols-3 gap-4">
+          <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
             {[
               { icon: BookOpen, value: vocabCount, label: 'Palavras' },
+              { icon: Award, value: masteredCount, label: 'Dominadas' },
               { icon: Clock, value: totalMinutes, label: 'Min. estudo' },
               { icon: Trophy, value: totalTests, label: 'Testes' },
+              { icon: MessageCircle, value: conversationCount, label: 'Conversas' },
+              { icon: PenTool, value: writingCount, label: 'Escritas' },
             ].map(({ icon: Icon, value, label }) => (
-              <div key={label} className="text-center bg-white/10 rounded-xl py-3">
-                <Icon size={16} className="mx-auto mb-1 text-white/70" />
-                <p className="text-xl font-bold">{value}</p>
-                <p className="text-xs text-white/60">{label}</p>
+              <div key={label} className="text-center bg-white/10 rounded-xl py-2.5">
+                <Icon size={14} className="mx-auto mb-1 text-white/70" />
+                <p className="text-lg font-bold">{value}</p>
+                <p className="text-[10px] text-white/60">{label}</p>
               </div>
             ))}
           </div>
         </div>
       </div>
+
+      {/* Vocabulary breakdown */}
+      <div className="card">
+        <h2 className="font-bold mb-3">Vocabulário</h2>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="text-center p-3 rounded-xl bg-emerald-500/10">
+            <p className="text-2xl font-bold text-emerald-600">{masteredCount}</p>
+            <p className="text-xs text-[var(--muted)]">Dominadas</p>
+          </div>
+          <div className="text-center p-3 rounded-xl bg-amber-500/10">
+            <p className="text-2xl font-bold text-amber-600">{learningCount}</p>
+            <p className="text-xs text-[var(--muted)]">Aprendendo</p>
+          </div>
+          <div className="text-center p-3 rounded-xl bg-blue-500/10">
+            <p className="text-2xl font-bold text-blue-600">{newCount}</p>
+            <p className="text-xs text-[var(--muted)]">Novas</p>
+          </div>
+        </div>
+        {vocabCount > 0 && (
+          <div className="h-3 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden flex">
+            <div className="bg-emerald-500 h-full" style={{ width: `${(masteredCount / vocabCount) * 100}%` }} />
+            <div className="bg-amber-500 h-full" style={{ width: `${(learningCount / vocabCount) * 100}%` }} />
+            <div className="bg-blue-500 h-full" style={{ width: `${(newCount / vocabCount) * 100}%` }} />
+          </div>
+        )}
+      </div>
+
+      {/* Weak words - needs review */}
+      {weakWords.length > 0 && (
+        <div className="card border-amber-500/30">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp size={16} className="text-amber-500" />
+            <h2 className="font-bold">Palavras que precisam de revisão</h2>
+          </div>
+          <p className="text-xs text-[var(--muted)] mb-3">Estas palavras tiveram mais dificuldade. Revise no Vocabulário!</p>
+          <div className="flex flex-wrap gap-2">
+            {weakWords.map(w => (
+              <span key={w.id} className="px-3 py-1.5 rounded-xl bg-amber-500/10 text-amber-700 dark:text-amber-400 text-sm font-medium">
+                {w.english} → {w.portuguese}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent words */}
+      {recentWords.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold mb-3">Últimas palavras adicionadas</h2>
+          <div className="flex flex-wrap gap-2">
+            {recentWords.map(w => (
+              <span key={w.id} className="px-3 py-1.5 rounded-xl bg-[var(--primary-bg)] text-[var(--primary)] text-sm font-medium">
+                {w.english}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Time by feature */}
+      {featureBreakdown.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold mb-3">Tempo por atividade</h2>
+          <div className="space-y-2">
+            {featureBreakdown.map(({ feature, minutes }) => (
+              <div key={feature} className="flex items-center gap-3">
+                <span className="text-sm w-28 text-[var(--muted)]">{feature}</span>
+                <div className="flex-1 bg-[var(--primary-bg)] rounded-full h-6 overflow-hidden">
+                  <div className="bg-gradient-to-r from-[var(--primary)] to-[var(--accent)] rounded-full h-6 flex items-center justify-end pr-3 transition-all"
+                    style={{ width: `${Math.max((minutes / Math.max(...featureBreakdown.map(f => f.minutes))) * 100, 15)}%` }}>
+                    <span className="text-xs text-white font-bold">{minutes} min</span>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Study time chart */}
       <div className="card">

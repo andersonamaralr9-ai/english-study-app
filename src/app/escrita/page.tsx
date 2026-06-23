@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
 import { PenTool, Sparkles, History } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
+import { triggerStudyTimer } from '@/components/StudyTimer'
 
 const PROMPTS = [
   'Describe your daily routine.',
@@ -42,6 +43,7 @@ export default function EscritaPage() {
 
   const handleSubmit = async () => {
     if (!text.trim()) return
+    triggerStudyTimer()
     setLoading(true); setCorrection('')
     try {
       const res = await fetch('/api/chat', {
