@@ -9,6 +9,7 @@ import { useLevel, LEVELS } from './LevelContext'
 const links = [
   { href: '/', label: 'Início', icon: Home },
   { href: '/vocabulario', label: 'Vocabulário', icon: BookOpen },
+  { href: '/gramatica', label: 'Gramática', icon: GraduationCap },
   { href: '/conversacao', label: 'Conversação', icon: MessageCircle },
   { href: '/escrita', label: 'Escrita', icon: PenTool },
   { href: '/escuta', label: 'Escuta', icon: Headphones },
