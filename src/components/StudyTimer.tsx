@@ -7,15 +7,15 @@ import { Clock, Play } from 'lucide-react'
 export default function StudyTimer({ feature }: { feature: string }) {
   const [seconds, setSeconds] = useState(0)
   const [started, setStarted] = useState(false)
+  const secondsRef = useRef(0)
+  const lastSavedRef = useRef(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
-  const savedRef = useRef(false)
 
   const start = useCallback(() => {
     if (started) return
     setStarted(true)
   }, [started])
 
-  // Expose start globally so pages can call it
   useEffect(() => {
     (window as unknown as Record<string, () => void>).__startStudyTimer = start
     return () => { delete (window as unknown as Record<string, unknown>).__startStudyTimer }
@@ -23,39 +23,65 @@ export default function StudyTimer({ feature }: { feature: string }) {
 
   useEffect(() => {
     if (started) {
-      intervalRef.current = setInterval(() => setSeconds((s) => s + 1), 1000)
+      intervalRef.current = setInterval(() => {
+        setSeconds((s) => {
+          secondsRef.current = s + 1
+          return s + 1
+        })
+      }, 1000)
     }
     return () => { if (intervalRef.current) clearInterval(intervalRef.current) }
   }, [started])
 
-  const save = useCallback(async () => {
-    if (seconds < 30 || savedRef.current) return
-    savedRef.current = true
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    const today = new Date().toISOString().split('T')[0]
-    const minutes = Math.max(1, Math.floor(seconds / 60))
+  const saveTime = useCallback(async () => {
+    const totalSeconds = secondsRef.current
+    const unsavedSeconds = totalSeconds - lastSavedRef.current
+    if (unsavedSeconds < 30) return
 
-    const { data: existing } = await supabase
-      .from('study_sessions')
-      .select('id, minutes')
-      .eq('user_id', user.id)
-      .eq('date', today)
-      .eq('feature', feature)
-      .single()
+    const minutes = Math.max(1, Math.floor(unsavedSeconds / 60))
+    lastSavedRef.current = totalSeconds
 
-    if (existing) {
-      await supabase.from('study_sessions').update({ minutes: existing.minutes + minutes }).eq('id', existing.id)
-    } else {
-      await supabase.from('study_sessions').insert({ user_id: user.id, date: today, minutes, feature })
-    }
-  }, [seconds, feature])
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const today = new Date().toISOString().split('T')[0]
 
+      const { data: existing } = await supabase
+        .from('study_sessions')
+        .select('id, minutes')
+        .eq('user_id', user.id)
+        .eq('date', today)
+        .eq('feature', feature)
+        .single()
+
+      if (existing) {
+        await supabase.from('study_sessions').update({ minutes: existing.minutes + minutes }).eq('id', existing.id)
+      } else {
+        await supabase.from('study_sessions').insert({ user_id: user.id, date: today, minutes, feature })
+      }
+    } catch { /* silent fail */ }
+  }, [feature])
+
+  // Auto-save every 2 minutes
   useEffect(() => {
-    const handler = () => { save() }
+    if (!started) return
+    const autoSave = setInterval(() => { saveTime() }, 120000)
+    return () => clearInterval(autoSave)
+  }, [started, saveTime])
+
+  // Save on page navigation / unmount
+  useEffect(() => {
+    const handler = () => { saveTime() }
     window.addEventListener('beforeunload', handler)
-    return () => { save(); window.removeEventListener('beforeunload', handler) }
-  }, [save])
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') saveTime()
+    })
+    return () => {
+      saveTime()
+      window.removeEventListener('beforeunload', handler)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveTime])
 
   const format = (s: number) => {
     const m = Math.floor(s / 60)
