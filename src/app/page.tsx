@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { getNextClass, getCEFRLevel } from '@/lib/constants'
+import { getNextClassFromSchedule, getCEFRLevel, type ClassScheduleEntry } from '@/lib/constants'
 import { isDueForReview } from '@/lib/srs'
 import { getDailyChallenge, getWordOfDay } from '@/lib/daily'
 import type { VocabWord, StudySession, TestResult } from '@/lib/supabase'
@@ -18,16 +18,18 @@ export default function Dashboard() {
   const [streak, setStreak] = useState(0)
   const [todayMinutes, setTodayMinutes] = useState(0)
   const [avgScore, setAvgScore] = useState(0)
+  const [classSchedule, setClassSchedule] = useState<ClassScheduleEntry[]>([])
 
   useEffect(() => {
     const load = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) { router.push('/login'); return }
 
-      const [vocabRes, sessionsRes, testsRes] = await Promise.all([
+      const [vocabRes, sessionsRes, testsRes, classesRes] = await Promise.all([
         supabase.from('vocab_words').select('*').eq('user_id', user.id),
         supabase.from('study_sessions').select('*').eq('user_id', user.id).order('date', { ascending: false }).limit(30),
         supabase.from('test_results').select('score, total').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('user_classes').select('*').eq('user_id', user.id).order('day', { ascending: true }),
       ])
 
       const words = (vocabRes.data || []) as VocabWord[]
@@ -53,6 +55,12 @@ export default function Dashboard() {
         setAvgScore(Math.round(tests.reduce((sum, t) => sum + (t.score / t.total) * 100, 0) / tests.length))
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const userClasses = ((classesRes.data || []) as any[]).map(c => ({
+        day: c.day, startTime: c.start_time, endTime: c.end_time, teacher: c.teacher, type: c.type,
+      }))
+      setClassSchedule(userClasses)
+
       setLoading(false)
     }
     load()
@@ -60,7 +68,7 @@ export default function Dashboard() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="spinner" /></div>
 
-  const nextClass = getNextClass()
+  const nextClass = getNextClassFromSchedule(classSchedule)
   const cefr = getCEFRLevel(vocabCount, avgScore)
 
   const daily = getDailyChallenge()

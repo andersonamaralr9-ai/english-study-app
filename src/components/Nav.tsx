@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
-import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap } from 'lucide-react'
+import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings } from 'lucide-react'
 import { useLevel, LEVELS } from './LevelContext'
 
 const links = [
@@ -15,6 +15,7 @@ const links = [
   { href: '/escuta', label: 'Escuta', icon: Headphones },
   { href: '/testes', label: 'Testes', icon: ClipboardList },
   { href: '/progresso', label: 'Progresso', icon: BarChart3 },
+  { href: '/configuracoes', label: 'Config', icon: Settings },
 ]
 
 export default function Nav() {

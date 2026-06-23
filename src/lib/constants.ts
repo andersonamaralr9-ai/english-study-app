@@ -1,53 +1,9 @@
-export const CLASS_SCHEDULE = [
-  {
-    day: 2, // Tuesday
-    startTime: '08:15',
-    endTime: '09:00',
-    teacher: 'Rodrigo',
-    type: 'Conversação',
-    description: 'Aula de conversação com pouco vocabulário',
-  },
-  {
-    day: 4, // Thursday
-    startTime: '08:15',
-    endTime: '09:00',
-    teacher: 'Rodrigo',
-    type: 'Conversação',
-    description: 'Aula de conversação com pouco vocabulário',
-  },
-  {
-    day: 5, // Friday
-    startTime: '15:30',
-    endTime: '17:00',
-    teacher: 'Chris',
-    type: 'Conversação + Vocabulário',
-    description: 'Conversação, contexto, vocabulário e escuta',
-  },
-]
-
 export const DAY_NAMES = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 
 export const VOCAB_CATEGORIES = [
-  'Saudações',
-  'Família',
-  'Comida',
-  'Trabalho',
-  'Casa',
-  'Corpo',
-  'Roupas',
-  'Clima',
-  'Transporte',
-  'Números',
-  'Cores',
-  'Animais',
-  'Verbos Comuns',
-  'Adjetivos',
-  'Frases do Dia a Dia',
-  'Tecnologia',
-  'Viagem',
-  'Saúde',
-  'Esportes',
-  'Outros',
+  'Saudações', 'Família', 'Comida', 'Trabalho', 'Casa', 'Corpo', 'Roupas', 'Clima',
+  'Transporte', 'Números', 'Cores', 'Animais', 'Verbos Comuns', 'Adjetivos',
+  'Frases do Dia a Dia', 'Tecnologia', 'Viagem', 'Saúde', 'Esportes', 'Outros',
 ]
 
 export const CEFR_LEVELS = [
@@ -67,14 +23,24 @@ export function getCEFRLevel(wordCount: number, avgScore: number): { level: stri
   return CEFR_LEVELS[0]
 }
 
-export function getNextClass(): { day: string; teacher: string; startTime: string; type: string; daysUntil: number } | null {
+export type ClassScheduleEntry = {
+  day: number
+  startTime: string
+  endTime: string
+  teacher: string
+  type: string
+}
+
+export function getNextClassFromSchedule(schedule: ClassScheduleEntry[]): { day: string; teacher: string; startTime: string; type: string; daysUntil: number } | null {
+  if (schedule.length === 0) return null
+
   const now = new Date()
   const currentDay = now.getDay()
   const currentTime = now.getHours() * 60 + now.getMinutes()
 
   for (let offset = 0; offset < 7; offset++) {
     const checkDay = (currentDay + offset) % 7
-    const classes = CLASS_SCHEDULE.filter((c) => c.day === checkDay)
+    const classes = schedule.filter((c) => c.day === checkDay)
     for (const cls of classes) {
       const [h, m] = cls.startTime.split(':').map(Number)
       const classTime = h * 60 + m
