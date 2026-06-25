@@ -3,8 +3,9 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Settings, Plus, Trash2, Save, GraduationCap } from 'lucide-react'
+import { Settings, Plus, Trash2, Save, GraduationCap, CheckCircle } from 'lucide-react'
 import { DAY_NAMES } from '@/lib/constants'
+import { useLevel, LEVELS } from '@/components/LevelContext'
 
 type ClassEntry = {
   id: string
@@ -17,6 +18,7 @@ type ClassEntry = {
 
 export default function ConfiguracoesPage() {
   const router = useRouter()
+  const { level, setLevel } = useLevel()
   const [userId, setUserId] = useState('')
   const [classes, setClasses] = useState<ClassEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -97,6 +99,29 @@ export default function ConfiguracoesPage() {
         <div>
           <h1 className="text-xl font-bold">Configurações</h1>
           <p className="text-xs text-[var(--muted)]">Personalize seu app</p>
+        </div>
+      </div>
+
+      {/* Level selection */}
+      <div className="card">
+        <div className="flex items-center gap-2 mb-4">
+          <GraduationCap size={18} className="text-[var(--primary)]" />
+          <h2 className="font-bold">Nível de Estudo</h2>
+        </div>
+        <p className="text-sm text-[var(--muted)] mb-4">Selecione o nível que você está estudando. Isso afeta todas as atividades: conversação, gramática, testes, escrita e escuta.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-5 gap-2">
+          {LEVELS.map(({ key, label, desc }) => (
+            <button key={key} onClick={() => setLevel(key)}
+              className={`p-3 rounded-xl border-2 text-center transition-all ${
+                level === key
+                  ? 'border-[var(--primary)] bg-[var(--primary-bg)] shadow-md'
+                  : 'border-[var(--card-border)] hover:border-[var(--primary)]/50'
+              }`}>
+              <p className={`text-xl font-bold ${level === key ? 'text-[var(--primary)]' : ''}`}>{label}</p>
+              <p className="text-xs text-[var(--muted)]">{desc}</p>
+              {level === key && <CheckCircle size={14} className="text-[var(--primary)] mx-auto mt-1" />}
+            </button>
+          ))}
         </div>
       </div>
 

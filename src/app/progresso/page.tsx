@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { VocabWord, StudySession, TestResult, WritingEntry, Conversation } from '@/lib/supabase'
-import { getCEFRLevel } from '@/lib/constants'
-import { BarChart3, GraduationCap, BookOpen, Clock, Trophy, MessageCircle, PenTool, Headphones, TrendingUp, Award } from 'lucide-react'
+import { BarChart3, GraduationCap, BookOpen, Clock, Trophy, MessageCircle, PenTool, TrendingUp, Award, Calendar } from 'lucide-react'
+import { useLevel, LEVELS } from '@/components/LevelContext'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function ProgressoPage() {
   const router = useRouter()
+  const { level } = useLevel()
   const [loading, setLoading] = useState(true)
   const [vocabCount, setVocabCount] = useState(0)
   const [masteredCount, setMasteredCount] = useState(0)
@@ -25,6 +26,10 @@ export default function ProgressoPage() {
   const [weakWords, setWeakWords] = useState<VocabWord[]>([])
   const [recentWords, setRecentWords] = useState<VocabWord[]>([])
   const [featureBreakdown, setFeatureBreakdown] = useState<{ feature: string; minutes: number }[]>([])
+  const [studyDays, setStudyDays] = useState(0)
+  const [streak, setStreak] = useState(0)
+  const [recentConversations, setRecentConversations] = useState<{ topic: string; date: string; msgCount: number }[]>([])
+  const [recentWritings, setRecentWritings] = useState<{ prompt: string; date: string }[]>([])
 
   useEffect(() => {
     const load = async () => {
@@ -35,8 +40,8 @@ export default function ProgressoPage() {
         supabase.from('vocab_words').select('*').eq('user_id', user.id),
         supabase.from('study_sessions').select('*').eq('user_id', user.id).order('date', { ascending: true }),
         supabase.from('test_results').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-        supabase.from('conversations').select('id').eq('user_id', user.id),
-        supabase.from('writing_entries').select('id').eq('user_id', user.id),
+        supabase.from('conversations').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
+        supabase.from('writing_entries').select('*').eq('user_id', user.id).order('created_at', { ascending: false }).limit(20),
       ])
 
       const words = (vocabRes.data || []) as VocabWord[]
@@ -73,8 +78,33 @@ export default function ProgressoPage() {
         setTestData(tests.slice(-20).map((t) => ({ date: new Date(t.created_at).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }), score: Math.round((t.score / t.total) * 100) })))
       }
 
-      setConversationCount((convoRes.data || []).length)
-      setWritingCount((writingRes.data || []).length)
+      const convos = (convoRes.data || []) as Conversation[]
+      setConversationCount(convos.length)
+      setRecentConversations(convos.slice(0, 5).map(c => ({
+        topic: c.topic || 'Conversa',
+        date: new Date(c.created_at).toLocaleDateString('pt-BR'),
+        msgCount: (c.messages as unknown[]).length,
+      })))
+
+      const writings = (writingRes.data || []) as WritingEntry[]
+      setWritingCount(writings.length)
+      setRecentWritings(writings.slice(0, 5).map(w => ({
+        prompt: w.prompt || 'Texto livre',
+        date: new Date(w.created_at).toLocaleDateString('pt-BR'),
+      })))
+
+      // Study days and streak
+      const uniqueDays = [...new Set(sessions.map(s => s.date))].sort().reverse()
+      setStudyDays(uniqueDays.length)
+
+      let s = 0
+      const checkDate = new Date()
+      for (const d of uniqueDays) {
+        const expected = checkDate.toISOString().split('T')[0]
+        if (d === expected) { s++; checkDate.setDate(checkDate.getDate() - 1) }
+        else break
+      }
+      setStreak(s)
 
       setLoading(false)
     }
@@ -83,7 +113,7 @@ export default function ProgressoPage() {
 
   if (loading) return <div className="flex items-center justify-center h-64"><div className="spinner" /></div>
 
-  const cefr = getCEFRLevel(vocabCount, avgScore)
+  const levelInfo = LEVELS.find(l => l.key === level) || LEVELS[0]
   const newCount = vocabCount - masteredCount - learningCount
 
   return (
@@ -103,16 +133,17 @@ export default function ProgressoPage() {
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-12 translate-x-12" />
         <div className="relative">
           <div className="flex items-center gap-2 text-white/70 text-sm mb-1">
-            <GraduationCap size={16} /> Nível estimado
+            <GraduationCap size={16} /> Estudando nível
           </div>
-          <p className="text-5xl font-bold">{cefr.level}</p>
-          <p className="text-white/70">{cefr.description}</p>
-          <div className="mt-4 grid grid-cols-3 sm:grid-cols-6 gap-3">
+          <p className="text-5xl font-bold">{levelInfo.key}</p>
+          <p className="text-white/70">{levelInfo.desc}</p>
+          <div className="mt-4 grid grid-cols-3 sm:grid-cols-7 gap-3">
             {[
+              { icon: Calendar, value: studyDays, label: 'Dias' },
+              { icon: TrendingUp, value: streak, label: 'Streak' },
               { icon: BookOpen, value: vocabCount, label: 'Palavras' },
               { icon: Award, value: masteredCount, label: 'Dominadas' },
-              { icon: Clock, value: totalMinutes, label: 'Min. estudo' },
-              { icon: Trophy, value: totalTests, label: 'Testes' },
+              { icon: Clock, value: totalMinutes, label: 'Min.' },
               { icon: MessageCircle, value: conversationCount, label: 'Conversas' },
               { icon: PenTool, value: writingCount, label: 'Escritas' },
             ].map(({ icon: Icon, value, label }) => (
@@ -232,6 +263,42 @@ export default function ProgressoPage() {
                 <Line type="monotone" dataKey="score" stroke="var(--success)" strokeWidth={2.5} dot={{ r: 4, fill: 'var(--success)' }} />
               </LineChart>
             </ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      {/* Recent conversations */}
+      {recentConversations.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold mb-3">Últimas Conversas</h2>
+          <div className="space-y-2">
+            {recentConversations.map((c, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--primary-bg)]/30">
+                <MessageCircle size={14} className="text-emerald-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{c.topic}</p>
+                  <p className="text-[10px] text-[var(--muted)]">{c.date} • {c.msgCount} mensagens</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Recent writings */}
+      {recentWritings.length > 0 && (
+        <div className="card">
+          <h2 className="font-bold mb-3">Últimas Escritas</h2>
+          <div className="space-y-2">
+            {recentWritings.map((w, i) => (
+              <div key={i} className="flex items-center gap-3 p-2 rounded-lg bg-[var(--primary-bg)]/30">
+                <PenTool size={14} className="text-violet-500 flex-shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium truncate">{w.prompt}</p>
+                  <p className="text-[10px] text-[var(--muted)]">{w.date}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
