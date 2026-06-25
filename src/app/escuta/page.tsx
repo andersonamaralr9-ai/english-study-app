@@ -7,6 +7,7 @@ import StudyTimer from '@/components/StudyTimer'
 import { Volume2, Mic, MicOff, RefreshCw, CheckCircle, XCircle, Headphones } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
 import { triggerStudyTimer } from '@/components/StudyTimer'
+import { trackAPICall } from '@/lib/apiUsage'
 
 type Sentence = { text: string; translation: string }
 
@@ -57,7 +58,7 @@ export default function EscutaPage() {
         body: JSON.stringify({ type: 'dictation', count: 8, level }),
       })
       const data = await res.json()
-      if (data.sentences) { setSentences(data.sentences); setCurrentIndex(0); setScore({ correct: 0, total: 0 }); setShowResult(false); setUserInput('') }
+      if (data.sentences) { trackAPICall(); setSentences(data.sentences); setCurrentIndex(0); setScore({ correct: 0, total: 0 }); setShowResult(false); setUserInput('') }
     } catch { /* fallback to defaults */ }
     setLoadingAI(false)
   }

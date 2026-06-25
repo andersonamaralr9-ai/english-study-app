@@ -8,6 +8,7 @@ import StudyTimer from '@/components/StudyTimer'
 import { CheckCircle, XCircle, RefreshCw, ClipboardList, Trophy, BookOpen, Languages, AlignLeft } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
 import { triggerStudyTimer } from '@/components/StudyTimer'
+import { trackAPICall } from '@/lib/apiUsage'
 
 type TestType = 'vocabulary' | 'fill-blank' | 'translation'
 type Question = { question: string; correct: string; options: string[]; hint?: string }
@@ -56,6 +57,7 @@ export default function TestesPage() {
       let qs: Question[] = []
       if (type === 'fill-blank' && data.questions) qs = data.questions.map((q: { sentence: string; answer: string; options: string[]; translation: string }) => ({ question: q.sentence, correct: q.answer, options: q.options, hint: q.translation }))
       else if (type === 'translation' && data.questions) qs = data.questions.map((q: { from: string; answer: string; hint: string }) => ({ question: q.from, correct: q.answer, options: [], hint: q.hint }))
+      trackAPICall()
       setQuestions(qs); setCurrentQ(0); setScore(0); setSelected(null); setFinished(false)
     } catch { alert('Erro ao gerar teste.'); setTestType(null) }
     setLoading(false)

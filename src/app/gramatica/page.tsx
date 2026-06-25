@@ -7,6 +7,7 @@ import { useLevel, LEVELS } from '@/components/LevelContext'
 import { getLessonsForLevel, type GrammarLesson } from '@/lib/grammar'
 import StudyTimer from '@/components/StudyTimer'
 import { triggerStudyTimer } from '@/components/StudyTimer'
+import { trackAPICall } from '@/lib/apiUsage'
 import { BookOpen, ChevronRight, ChevronLeft, CheckCircle, Volume2, Sparkles } from 'lucide-react'
 
 export default function GramaticaPage() {
@@ -71,6 +72,7 @@ export default function GramaticaPage() {
         result += decoder.decode(value, { stream: true })
         setAiResponse(result)
       }
+      trackAPICall()
     } catch { setAiResponse('Erro ao conectar com a IA.') }
     setLoadingAI(false)
   }

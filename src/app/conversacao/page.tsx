@@ -9,6 +9,7 @@ import StudyTimer from '@/components/StudyTimer'
 import { Send, Trash2, MessageCircle, Mic, MicOff, Volume2, VolumeX, GraduationCap, History, Plus, ChevronLeft } from 'lucide-react'
 import { useLevel, LEVELS } from '@/components/LevelContext'
 import { triggerStudyTimer } from '@/components/StudyTimer'
+import { trackAPICall } from '@/lib/apiUsage'
 
 type Message = { role: 'user' | 'assistant'; content: string }
 type View = 'topics' | 'chat' | 'history'
@@ -165,6 +166,7 @@ export default function ConversacaoPage() {
         setMessages([...newMessages, { role: 'assistant', content: assistantContent }])
       }
 
+      trackAPICall()
       if (autoSpeak && assistantContent) speak(assistantContent)
 
       const fullMessages = [...newMessages, { role: 'assistant' as const, content: assistantContent }]

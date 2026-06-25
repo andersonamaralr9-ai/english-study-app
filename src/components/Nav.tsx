@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState } from 'react'
-import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings, Zap } from 'lucide-react'
 import { useLevel, LEVELS } from './LevelContext'
+import { getAPIUsage } from '@/lib/apiUsage'
 
 const links = [
   { href: '/', label: 'Início', icon: Home },
@@ -22,6 +23,14 @@ export default function Nav() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
   const { level, setLevel } = useLevel()
+  const [apiUsage, setApiUsage] = useState({ count: 0, limit: 14400, percentage: 0 })
+
+  useEffect(() => {
+    const update = () => setApiUsage(getAPIUsage())
+    update()
+    const interval = setInterval(update, 5000)
+    return () => clearInterval(interval)
+  }, [])
 
   if (pathname === '/login') return null
 
@@ -67,6 +76,12 @@ export default function Nav() {
                   {label}
                 </button>
               ))}
+            </div>
+
+            {/* API usage */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-[var(--card)] border border-[var(--card-border)]" title={`${apiUsage.count} de ${apiUsage.limit} chamadas hoje (${apiUsage.percentage}%)`}>
+              <Zap size={12} className={apiUsage.percentage > 80 ? 'text-red-500' : apiUsage.percentage > 50 ? 'text-amber-500' : 'text-emerald-500'} />
+              <span className="text-[10px] font-bold text-[var(--muted)]">{apiUsage.percentage}%</span>
             </div>
 
             {/* Mobile menu button */}

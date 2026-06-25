@@ -7,6 +7,7 @@ import StudyTimer from '@/components/StudyTimer'
 import { PenTool, Sparkles, History } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
 import { triggerStudyTimer } from '@/components/StudyTimer'
+import { trackAPICall } from '@/lib/apiUsage'
 
 const PROMPTS = [
   'Describe your daily routine.',
@@ -65,6 +66,7 @@ export default function EscritaPage() {
         result += decoder.decode(value, { stream: true })
         setCorrection(result)
       }
+      trackAPICall()
       await supabase.from('writing_entries').insert({ user_id: userId, prompt, user_text: text, correction: result })
       setHistory([{ id: crypto.randomUUID(), prompt, user_text: text, correction: result, created_at: new Date().toISOString() }, ...history])
     } catch { setCorrection('Erro ao conectar com a IA.') }
