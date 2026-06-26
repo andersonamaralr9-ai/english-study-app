@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { Shield, Users, TrendingUp, Clock, BookOpen, Trophy, MessageCircle, PenTool, Download, ChevronDown, ChevronUp, Search, UserPlus, Award, AlertCircle } from 'lucide-react'
+import { Shield, Users, TrendingUp, Clock, BookOpen, Trophy, MessageCircle, PenTool, Download, ChevronDown, ChevronUp, Search, UserPlus, Award, AlertCircle, Upload } from 'lucide-react'
 
 type UserOverview = {
   user_id: string
@@ -79,8 +79,24 @@ export default function AdminPage() {
   }
 
   const toggleActive = async (userId: string, currentActive: boolean) => {
-    await supabase.from('user_settings').update({ active: !currentActive }).eq('user_id', userId)
+    await fetch('/api/admin/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'toggle-active', userId, active: !currentActive, adminUserId: currentUserId }),
+    })
     setUsers(users.map(u => u.user_id === userId ? { ...u, active: !currentActive } : u))
+  }
+
+  const deleteUser = async (userId: string, email: string) => {
+    if (!confirm(`Tem certeza que deseja EXCLUIR o usuário ${email}? Todos os dados serão perdidos.`)) return
+    const res = await fetch('/api/admin/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'delete', userId, adminUserId: currentUserId }),
+    })
+    const data = await res.json()
+    if (data.success) setUsers(users.filter(u => u.user_id !== userId))
+    else alert(data.error || 'Erro ao excluir')
   }
 
   const updateName = async (userId: string, name: string) => {
@@ -330,14 +346,18 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <button onClick={() => toggleRole(u.user_id, u.role)}
                       className={`btn-ghost text-xs ${u.role === 'admin' ? 'text-red-600' : 'text-[var(--primary)]'}`}>
                       {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
                     </button>
                     <button onClick={() => toggleActive(u.user_id, u.active)}
-                      className={`btn-ghost text-xs ${u.active ? 'text-red-600' : 'text-emerald-600'}`}>
-                      {u.active ? 'Desativar' : 'Ativar'}
+                      className={`btn-ghost text-xs ${u.active ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      {u.active ? 'Inativar' : 'Reativar'}
+                    </button>
+                    <button onClick={() => deleteUser(u.user_id, u.email)}
+                      className="btn-ghost text-xs text-red-600">
+                      Excluir permanentemente
                     </button>
                   </div>
 
@@ -427,96 +447,198 @@ export default function AdminPage() {
 
       {/* Invite */}
       {view === 'invite' && (
-        <div className="space-y-4">
-          <div className="card space-y-4">
-            <h3 className="font-bold">Adicionar Colaborador</h3>
-            <p className="text-sm text-[var(--muted)]">
-              Cadastre um novo colaborador diretamente. Ele receberá um email e senha temporária para acessar.
-            </p>
+        <InviteSection currentUserId={currentUserId} onRefresh={async () => {
+          const { data } = await supabase.from('admin_user_overview').select('*')
+          if (data) setUsers(data as UserOverview[])
+        }} />
+      )}
+    </div>
+  )
+}
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium mb-1">Email *</label>
-                <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colaborador@empresa.com" className="input" type="email" required />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">Nome</label>
-                <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nome do colaborador" className="input" />
-              </div>
-            </div>
+// Invite Section Component
+function InviteSection({ currentUserId, onRefresh }: { currentUserId: string; onRefresh: () => void }) {
+  const [tab, setTab] = useState<'single' | 'bulk'>('single')
+  const [email, setEmail] = useState('')
+  const [name, setName] = useState('')
+  const [role, setRole] = useState('user')
+  const [sendEmail, setSendEmail] = useState(true)
+  const [loading, setLoading] = useState(false)
+  const [msg, setMsg] = useState('')
+  const [result, setResult] = useState<{ email: string; tempPassword?: string; method: string } | null>(null)
+  const [bulkText, setBulkText] = useState('')
+  const [bulkResults, setBulkResults] = useState<{ email: string; status: string; tempPassword?: string }[]>([])
+  const [bulkDone, setBulkDone] = useState(false)
 
+  const handleSingle = async () => {
+    if (!email.trim()) return
+    setLoading(true); setMsg(''); setResult(null)
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'create', email, name, role, sendEmail, adminUserId: currentUserId }),
+      })
+      const data = await res.json()
+      if (data.error) { setMsg(data.error) }
+      else { setResult(data); setEmail(''); setName(''); onRefresh() }
+    } catch { setMsg('Erro ao criar usuário.') }
+    setLoading(false)
+  }
+
+  const handleBulk = async () => {
+    const lines = bulkText.trim().split('\n').filter(l => l.trim())
+    const users = lines.map(line => {
+      const parts = line.split(/[,;\t]/).map(p => p.trim())
+      return { email: parts[0] || '', name: parts[1] || '' }
+    }).filter(u => u.email.includes('@'))
+
+    if (users.length === 0) { setMsg('Nenhum email válido encontrado.'); return }
+
+    setLoading(true); setMsg(''); setBulkResults([]); setBulkDone(false)
+    try {
+      const res = await fetch('/api/admin/invite', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'bulk', users, sendEmail, adminUserId: currentUserId }),
+      })
+      const data = await res.json()
+      if (data.results) { setBulkResults(data.results); setBulkDone(true); onRefresh() }
+      else { setMsg(data.error || 'Erro') }
+    } catch { setMsg('Erro ao importar.') }
+    setLoading(false)
+  }
+
+  const exportBulkResults = () => {
+    const csv = ['Email,Status,Senha Temporária', ...bulkResults.map(r => `${r.email},${r.status},${r.tempPassword || '-'}`)].join('\n')
+    const blob = new Blob(['﻿' + csv], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a') as HTMLAnchorElement
+    a.href = url; a.download = 'usuarios-criados.csv'; a.click(); URL.revokeObjectURL(url)
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Tab toggle */}
+      <div className="flex gap-2">
+        <button onClick={() => setTab('single')} className={`flex-1 py-2 rounded-xl text-sm font-medium ${tab === 'single' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] border border-[var(--card-border)]'}`}>
+          <UserPlus size={14} className="inline mr-1" /> Adicionar um
+        </button>
+        <button onClick={() => setTab('bulk')} className={`flex-1 py-2 rounded-xl text-sm font-medium ${tab === 'bulk' ? 'bg-[var(--primary)] text-white' : 'bg-[var(--card)] border border-[var(--card-border)]'}`}>
+          <Upload size={14} className="inline mr-1" /> Importar lista
+        </button>
+      </div>
+
+      {/* Email toggle */}
+      <div className="card flex items-center justify-between">
+        <div>
+          <p className="text-sm font-medium">Enviar email de convite</p>
+          <p className="text-xs text-[var(--muted)]">{sendEmail ? 'O colaborador recebe um email com link para definir a senha' : 'Você recebe uma senha temporária para compartilhar manualmente'}</p>
+        </div>
+        <button onClick={() => setSendEmail(!sendEmail)}
+          className={`w-12 h-6 rounded-full transition-colors ${sendEmail ? 'bg-[var(--primary)]' : 'bg-gray-300 dark:bg-gray-600'}`}>
+          <div className={`w-5 h-5 bg-white rounded-full shadow transition-transform ${sendEmail ? 'translate-x-6' : 'translate-x-0.5'}`} />
+        </button>
+      </div>
+
+      {/* Single invite */}
+      {tab === 'single' && (
+        <div className="card space-y-4">
+          <h3 className="font-bold">Adicionar Colaborador</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-medium mb-1">Perfil</label>
-              <div className="flex gap-2">
-                <button onClick={() => setInviteRole('user')}
-                  className={`flex-1 p-2 rounded-xl border text-sm font-medium ${inviteRole === 'user' ? 'border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)]' : 'border-[var(--card-border)]'}`}>
-                  Colaborador
-                </button>
-                <button onClick={() => setInviteRole('admin')}
-                  className={`flex-1 p-2 rounded-xl border text-sm font-medium ${inviteRole === 'admin' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600' : 'border-[var(--card-border)]'}`}>
-                  Admin
-                </button>
-              </div>
+              <label className="block text-xs font-medium mb-1">Email *</label>
+              <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="colaborador@empresa.com" className="input" type="email" />
             </div>
-
-            <button onClick={async () => {
-              if (!inviteEmail.trim()) return
-              setInviteLoading(true); setInviteMsg(''); setInviteResult(null)
-              try {
-                const res = await fetch('/api/admin/invite', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ email: inviteEmail, name: inviteName, role: inviteRole, adminUserId: currentUserId }),
-                })
-                const data = await res.json()
-                if (data.error) { setInviteMsg(data.error) }
-                else {
-                  setInviteResult({ email: data.email, tempPassword: data.tempPassword })
-                  setInviteMsg('')
-                  setInviteEmail(''); setInviteName(''); setInviteRole('user')
-                  // Refresh user list
-                  const { data: refreshed } = await supabase.from('admin_user_overview').select('*')
-                  if (refreshed) setUsers(refreshed as UserOverview[])
-                }
-              } catch { setInviteMsg('Erro ao criar usuário.') }
-              setInviteLoading(false)
-            }} disabled={inviteLoading || !inviteEmail.trim()} className="btn-primary w-full flex items-center justify-center gap-2">
-              <UserPlus size={16} /> {inviteLoading ? 'Criando...' : 'Criar usuário'}
-            </button>
-
-            {inviteMsg && (
-              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm">{inviteMsg}</div>
-            )}
+            <div>
+              <label className="block text-xs font-medium mb-1">Nome</label>
+              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nome completo" className="input" />
+            </div>
           </div>
-
-          {/* Success result with credentials */}
-          {inviteResult && (
-            <div className="card border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-3">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold">
-                <UserPlus size={16} /> Usuário criado com sucesso!
-              </div>
-              <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[var(--muted)]">Email:</span>
-                  <span className="font-medium">{inviteResult.email}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-[var(--muted)]">Senha temporária:</span>
-                  <span className="font-mono font-bold text-[var(--primary)]">{inviteResult.tempPassword}</span>
-                </div>
-              </div>
-              <p className="text-xs text-[var(--muted)]">
-                Envie essas credenciais para o colaborador. Ele deve acessar <strong>english-amaral.vercel.app</strong> e fazer login. Recomende trocar a senha depois.
-              </p>
-              <button onClick={() => {
-                navigator.clipboard.writeText(`Email: ${inviteResult.email}\nSenha: ${inviteResult.tempPassword}\nAcesse: https://english-amaral.vercel.app`)
-                setInviteMsg('Copiado para a área de transferência!')
-                setTimeout(() => setInviteMsg(''), 2000)
-              }} className="btn-ghost w-full text-sm">
-                Copiar credenciais
-              </button>
+          <div>
+            <label className="block text-xs font-medium mb-1">Perfil</label>
+            <div className="flex gap-2">
+              <button onClick={() => setRole('user')} className={`flex-1 p-2 rounded-xl border text-sm font-medium ${role === 'user' ? 'border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)]' : 'border-[var(--card-border)]'}`}>Colaborador</button>
+              <button onClick={() => setRole('admin')} className={`flex-1 p-2 rounded-xl border text-sm font-medium ${role === 'admin' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600' : 'border-[var(--card-border)]'}`}>Admin</button>
             </div>
+          </div>
+          <button onClick={handleSingle} disabled={loading || !email.trim()} className="btn-primary w-full flex items-center justify-center gap-2">
+            <UserPlus size={16} /> {loading ? 'Criando...' : sendEmail ? 'Enviar convite por email' : 'Criar com senha temporária'}
+          </button>
+        </div>
+      )}
+
+      {/* Bulk import */}
+      {tab === 'bulk' && (
+        <div className="card space-y-4">
+          <h3 className="font-bold">Importar Lista de Colaboradores</h3>
+          <p className="text-xs text-[var(--muted)]">Cole a lista com um email por linha. Opcionalmente, adicione o nome após vírgula ou tab.</p>
+          <div className="p-3 rounded-lg bg-[var(--primary-bg)]/50 text-xs text-[var(--muted)] font-mono">
+            joao@empresa.com, João Silva<br />
+            maria@empresa.com, Maria Santos<br />
+            pedro@empresa.com
+          </div>
+          <textarea value={bulkText} onChange={(e) => setBulkText(e.target.value)}
+            placeholder="joao@empresa.com, João Silva&#10;maria@empresa.com, Maria Santos&#10;pedro@empresa.com"
+            className="input resize-none font-mono text-sm" rows={8} />
+          <div className="flex items-center justify-between text-xs text-[var(--muted)]">
+            <span>{bulkText.trim().split('\n').filter(l => l.includes('@')).length} emails detectados</span>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <span>Ou faça upload:</span>
+              <input type="file" accept=".csv,.txt" className="text-xs" onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (!file) return
+                const reader = new FileReader()
+                reader.onload = (ev) => { setBulkText(ev.target?.result as string || '') }
+                reader.readAsText(file)
+              }} />
+            </label>
+          </div>
+          <button onClick={handleBulk} disabled={loading || !bulkText.trim()} className="btn-primary w-full flex items-center justify-center gap-2">
+            <Upload size={16} /> {loading ? 'Importando...' : sendEmail ? 'Enviar convites por email' : 'Criar todos com senha temporária'}
+          </button>
+        </div>
+      )}
+
+      {/* Messages */}
+      {msg && <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm">{msg}</div>}
+
+      {/* Single result */}
+      {result && (
+        <div className="card border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-3">
+          <div className="flex items-center gap-2 text-emerald-600 font-bold"><UserPlus size={16} /> {result.method === 'email' ? 'Convite enviado!' : 'Usuário criado!'}</div>
+          <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] space-y-2">
+            <div className="flex justify-between text-sm"><span className="text-[var(--muted)]">Email:</span><span className="font-medium">{result.email}</span></div>
+            {result.tempPassword && <div className="flex justify-between text-sm"><span className="text-[var(--muted)]">Senha temporária:</span><span className="font-mono font-bold text-[var(--primary)]">{result.tempPassword}</span></div>}
+            {result.method === 'email' && <p className="text-xs text-emerald-600">O colaborador receberá um email com link para definir a senha.</p>}
+          </div>
+          {result.tempPassword && (
+            <button onClick={() => {
+              navigator.clipboard.writeText(`Email: ${result.email}\nSenha: ${result.tempPassword}\nAcesse: https://english-amaral.vercel.app`)
+              setMsg('Copiado!'); setTimeout(() => setMsg(''), 2000)
+            }} className="btn-ghost w-full text-sm">Copiar credenciais</button>
           )}
+        </div>
+      )}
+
+      {/* Bulk results */}
+      {bulkDone && bulkResults.length > 0 && (
+        <div className="card space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold">Resultado da Importação</h3>
+            {!sendEmail && <button onClick={exportBulkResults} className="btn-ghost text-xs flex items-center gap-1"><Download size={12} /> Exportar senhas</button>}
+          </div>
+          <div className="space-y-1 max-h-64 overflow-y-auto">
+            {bulkResults.map((r, i) => (
+              <div key={i} className={`flex items-center justify-between p-2 rounded-lg text-xs ${r.status === 'Criado' || r.status.includes('Convite') ? 'bg-emerald-50 dark:bg-emerald-900/10' : 'bg-red-50 dark:bg-red-900/10'}`}>
+                <span className="font-medium">{r.email}</span>
+                <span className={r.status === 'Criado' || r.status.includes('Convite') ? 'text-emerald-600' : 'text-red-600'}>{r.status}</span>
+              </div>
+            ))}
+          </div>
+          <p className="text-xs text-[var(--muted)]">
+            {bulkResults.filter(r => r.status === 'Criado' || r.status.includes('Convite')).length} de {bulkResults.length} criados com sucesso
+          </p>
         </div>
       )}
     </div>
