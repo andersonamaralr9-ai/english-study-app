@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { VocabWord } from '@/lib/supabase'
 import StudyTimer from '@/components/StudyTimer'
-import { CheckCircle, XCircle, RefreshCw, ClipboardList, Trophy, BookOpen, Languages, AlignLeft } from 'lucide-react'
+import { CheckCircle, XCircle, RefreshCw, ClipboardList, Trophy, BookOpen, Languages, AlignLeft, Sparkles } from 'lucide-react'
 import { useLevel } from '@/components/LevelContext'
 import { triggerStudyTimer } from '@/components/StudyTimer'
 import { trackAPICall } from '@/lib/apiUsage'
 
 type TestType = 'vocabulary' | 'fill-blank' | 'translation'
-type Question = { question: string; correct: string; options: string[]; hint?: string }
+type Question = { question: string; correct: string; options: string[]; hint?: string; explanation?: string; tip?: string }
 
 export default function TestesPage() {
   const router = useRouter()
@@ -55,8 +55,8 @@ export default function TestesPage() {
       const res = await fetch('/api/exercise', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ type, words: vocabWords, count: 8, level }) })
       const data = await res.json()
       let qs: Question[] = []
-      if (type === 'fill-blank' && data.questions) qs = data.questions.map((q: { sentence: string; answer: string; options: string[]; translation: string }) => ({ question: q.sentence, correct: q.answer, options: q.options, hint: q.translation }))
-      else if (type === 'translation' && data.questions) qs = data.questions.map((q: { from: string; answer: string; hint: string }) => ({ question: q.from, correct: q.answer, options: [], hint: q.hint }))
+      if (type === 'fill-blank' && data.questions) qs = data.questions.map((q: { sentence: string; answer: string; options: string[]; translation: string; explanation?: string; tip?: string }) => ({ question: q.sentence, correct: q.answer, options: q.options, hint: q.translation, explanation: q.explanation, tip: q.tip }))
+      else if (type === 'translation' && data.questions) qs = data.questions.map((q: { from: string; answer: string; hint: string; explanation?: string; tip?: string }) => ({ question: q.from, correct: q.answer, options: [], hint: q.hint, explanation: q.explanation, tip: q.tip }))
       trackAPICall()
       setQuestions(qs); setCurrentQ(0); setScore(0); setSelected(null); setFinished(false)
     } catch { alert('Erro ao gerar teste.'); setTestType(null) }
@@ -69,10 +69,12 @@ export default function TestesPage() {
     setSelected(answer)
     const isCorrect = answer.toLowerCase().trim() === questions[currentQ].correct.toLowerCase().trim()
     if (isCorrect) setScore(score + 1)
-    setTimeout(() => {
-      if (currentQ + 1 < questions.length) { setCurrentQ(currentQ + 1); setSelected(null) }
-      else { setFinished(true); saveResult(isCorrect ? score + 1 : score) }
-    }, 1500)
+  }
+
+  const goNext = () => {
+    const isCorrect = selected?.toLowerCase().trim() === questions[currentQ].correct.toLowerCase().trim()
+    if (currentQ + 1 < questions.length) { setCurrentQ(currentQ + 1); setSelected(null) }
+    else { setFinished(true); saveResult(isCorrect ? score : score) }
   }
 
   const saveResult = async (finalScore: number) => {
@@ -148,8 +150,18 @@ export default function TestesPage() {
             onKeyDown={(e) => { if (e.key === 'Enter' && translationInput.trim()) { handleAnswer(translationInput); setTranslationInput('') } }}
             placeholder="Digite a tradução..." className="input text-center text-lg" disabled={!!selected} />
           {selected && (
-            <div className={`p-3 rounded-xl text-center text-sm ${selected.toLowerCase().trim() === q.correct.toLowerCase().trim() ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
-              Resposta correta: <strong>{q.correct}</strong>
+            <div className="space-y-3">
+              <div className={`p-3 rounded-xl text-center text-sm ${selected.toLowerCase().trim() === q.correct.toLowerCase().trim() ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600' : 'bg-red-50 dark:bg-red-900/20 text-red-600'}`}>
+                {selected.toLowerCase().trim() !== q.correct.toLowerCase().trim() && <>Resposta correta: <strong>{q.correct}</strong></>}
+                {selected.toLowerCase().trim() === q.correct.toLowerCase().trim() && <><CheckCircle size={16} className="inline mr-1" /> Correto!</>}
+              </div>
+              {q.explanation && (
+                <div className="p-3 rounded-xl bg-[var(--primary-bg)]/50 text-sm space-y-1">
+                  <div className="flex items-start gap-2"><BookOpen size={14} className="text-[var(--primary)] mt-0.5 flex-shrink-0" /><p>{q.explanation}</p></div>
+                  {q.tip && <div className="flex items-start gap-2"><Sparkles size={14} className="text-amber-500 mt-0.5 flex-shrink-0" /><p className="text-[var(--muted)]">{q.tip}</p></div>}
+                </div>
+              )}
+              <button onClick={() => { goNext(); setTranslationInput('') }} className="btn-primary w-full">Próxima</button>
             </div>
           )}
           {!selected && <button onClick={() => { handleAnswer(translationInput); setTranslationInput('') }} disabled={!translationInput.trim()} className="btn-primary w-full">Verificar</button>}
@@ -186,6 +198,16 @@ export default function TestesPage() {
             )
           })}
         </div>
+
+        {/* Explanation after answering */}
+        {selected && (q.explanation || q.tip) && (
+          <div className="p-4 rounded-xl bg-[var(--primary-bg)]/50 text-sm space-y-2">
+            {q.explanation && <div className="flex items-start gap-2"><BookOpen size={14} className="text-[var(--primary)] mt-0.5 flex-shrink-0" /><p>{q.explanation}</p></div>}
+            {q.tip && <div className="flex items-start gap-2"><Sparkles size={14} className="text-amber-500 mt-0.5 flex-shrink-0" /><p className="text-[var(--muted)]">{q.tip}</p></div>}
+          </div>
+        )}
+
+        {selected && <button onClick={goNext} className="btn-primary w-full">Próxima</button>}
       </div>
     </div>
   )

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings, Zap } from 'lucide-react'
+import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings, Zap, Star } from 'lucide-react'
 import { useLevel, LEVELS } from './LevelContext'
 import { getAPIUsage } from '@/lib/apiUsage'
 
@@ -14,6 +14,7 @@ const links = [
   { href: '/conversacao', label: 'Conversação', icon: MessageCircle },
   { href: '/escrita', label: 'Escrita', icon: PenTool },
   { href: '/escuta', label: 'Escuta', icon: Headphones },
+  { href: '/palavra-do-dia', label: 'Palavra', icon: Star },
   { href: '/testes', label: 'Testes', icon: ClipboardList },
   { href: '/progresso', label: 'Progresso', icon: BarChart3 },
   { href: '/configuracoes', label: 'Config', icon: Settings },

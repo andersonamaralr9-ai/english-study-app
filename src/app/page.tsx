@@ -172,6 +172,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-2">
             <BookOpen size={16} className="text-blue-500" />
             <span className="text-xs font-semibold text-blue-600 uppercase">Palavra do Dia</span>
+            <Link href="/palavra-do-dia" className="text-[10px] text-[var(--primary)] hover:underline ml-auto">Atividades →</Link>
           </div>
           <div className="flex items-center justify-between">
             <div>
