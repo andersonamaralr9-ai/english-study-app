@@ -177,6 +177,13 @@ export default function VocabularioPage() {
               {VOCAB_CATEGORIES.map((c) => <option key={c}>{c}</option>)}
             </select>
           </div>
+          {/* Legend */}
+          <div className="flex gap-4 text-[10px] text-[var(--muted)]">
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-blue-500" /> Nova</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-amber-500" /> Aprendendo (revisada 1-2x)</div>
+            <div className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500" /> Dominada (revisada 3x+ com sucesso)</div>
+          </div>
+
           {filteredWords.length === 0 ? (
             <div className="card text-center py-12">
               <p className="text-[var(--muted)]">Nenhuma palavra encontrada.</p>
@@ -184,21 +191,29 @@ export default function VocabularioPage() {
             </div>
           ) : (
             <div className="space-y-2">
-              {filteredWords.map((w) => (
-                <div key={w.id} className="card flex items-center justify-between py-3">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div>
-                      <span className="font-semibold text-[var(--primary)]">{w.english}</span>
-                      <span className="text-[var(--muted)] mx-2">→</span>
-                      <span>{w.portuguese}</span>
+              {filteredWords.map((w) => {
+                const mastered = w.repetitions >= 3 && w.ease_factor >= 2.3
+                const learning = w.repetitions > 0 && !mastered
+                const statusColor = mastered ? 'bg-emerald-500' : learning ? 'bg-amber-500' : 'bg-blue-500'
+                const statusLabel = mastered ? 'Dominada' : learning ? 'Aprendendo' : 'Nova'
+                return (
+                  <div key={w.id} className="card flex items-center justify-between py-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className={`w-2 h-2 rounded-full ${statusColor} flex-shrink-0`} title={statusLabel} />
+                      <div>
+                        <span className="font-semibold text-[var(--primary)]">{w.english}</span>
+                        <span className="text-[var(--muted)] mx-2">→</span>
+                        <span>{w.portuguese}</span>
+                      </div>
+                      <span className="badge bg-[var(--primary-bg)] text-[var(--primary)] text-[10px] hidden sm:inline-flex">{w.category}</span>
+                      <span className={`text-[10px] font-medium hidden sm:inline ${mastered ? 'text-emerald-600' : learning ? 'text-amber-600' : 'text-blue-600'}`}>{statusLabel}</span>
                     </div>
-                    <span className="badge bg-[var(--primary-bg)] text-[var(--primary)] text-[10px] hidden sm:inline-flex">{w.category}</span>
+                    <button onClick={() => handleDelete(w.id)} className="btn-ghost p-1.5 text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20">
+                      <Trash2 size={14} />
+                    </button>
                   </div>
-                  <button onClick={() => handleDelete(w.id)} className="btn-ghost p-1.5 text-[var(--danger)] hover:bg-red-50 dark:hover:bg-red-900/20">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              ))}
+                )
+              })}
             </div>
           )}
         </div>

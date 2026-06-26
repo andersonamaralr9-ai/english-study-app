@@ -47,6 +47,10 @@ body {
   font-family: var(--font-sans), system-ui, sans-serif;
 }
 
+/* Hide scrollbar for nav */
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+
 /* Smooth scrollbar */
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
