@@ -40,6 +40,7 @@ export default function AdminPage() {
   const [inviteLoading, setInviteLoading] = useState(false)
   const [inviteResult, setInviteResult] = useState<{ email: string; tempPassword: string } | null>(null)
   const [currentUserId, setCurrentUserId] = useState('')
+  const [resetResult, setResetResult] = useState<{ userId: string; password: string } | null>(null)
   const [sortBy, setSortBy] = useState<'name' | 'total_minutes' | 'vocab_count' | 'avg_test_score'>('total_minutes')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -85,6 +86,17 @@ export default function AdminPage() {
       body: JSON.stringify({ action: 'toggle-active', userId, active: !currentActive, adminUserId: currentUserId }),
     })
     setUsers(users.map(u => u.user_id === userId ? { ...u, active: !currentActive } : u))
+  }
+
+  const resetPassword = async (userId: string) => {
+    const res = await fetch('/api/admin/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'reset-password', userId, adminUserId: currentUserId }),
+    })
+    const data = await res.json()
+    if (data.success) setResetResult({ userId, password: data.newPassword })
+    else alert(data.error || 'Erro ao redefinir senha')
   }
 
   const deleteUser = async (userId: string, email: string) => {
@@ -355,11 +367,30 @@ export default function AdminPage() {
                       className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${u.active ? 'border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20' : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}>
                       {u.active ? 'Inativar' : 'Reativar'}
                     </button>
+                    <button onClick={() => resetPassword(u.user_id)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-300 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20">
+                      Redefinir Senha
+                    </button>
                     <button onClick={() => deleteUser(u.user_id, u.email)}
                       className="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-300 text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30">
                       Excluir
                     </button>
                   </div>
+
+                  {/* Password reset result */}
+                  {resetResult?.userId === u.user_id && (
+                    <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 space-y-2">
+                      <p className="text-sm font-medium text-blue-700 dark:text-blue-400">Nova senha gerada:</p>
+                      <div className="flex items-center justify-between bg-[var(--card)] p-2 rounded-lg">
+                        <span className="font-mono font-bold text-[var(--primary)]">{resetResult.password}</span>
+                        <button onClick={() => {
+                          navigator.clipboard.writeText(`Email: ${u.email}\nNova senha: ${resetResult.password}\nAcesse: https://english-amaral.vercel.app`)
+                          alert('Copiado!')
+                        }} className="text-xs text-[var(--primary)] hover:underline">Copiar</button>
+                      </div>
+                      <p className="text-[10px] text-[var(--muted)]">Envie essa senha para o colaborador. Ela substitui a senha anterior.</p>
+                    </div>
+                  )}
 
                   <p className="text-[10px] text-[var(--muted)]">
                     Cadastro: {new Date(u.joined_at).toLocaleDateString('pt-BR')} •

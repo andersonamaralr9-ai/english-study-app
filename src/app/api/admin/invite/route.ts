@@ -127,6 +127,16 @@ export async function POST(req: Request) {
     return Response.json({ success: true })
   }
 
+  // Reset password
+  if (action === 'reset-password') {
+    const { userId } = body
+    if (!userId) return Response.json({ error: 'userId é obrigatório' }, { status: 400 })
+    const newPassword = Math.random().toString(36).slice(-10) + 'A1!'
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, { password: newPassword })
+    if (error) return Response.json({ error: error.message }, { status: 400 })
+    return Response.json({ success: true, newPassword })
+  }
+
   // Toggle active
   if (action === 'toggle-active') {
     const { userId, active } = body
