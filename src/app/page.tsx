@@ -132,9 +132,6 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Level progress */}
-      <LevelProgressCard compact />
-
       {/* Next class */}
       {nextClass && (
         <div className="gradient-bg rounded-2xl p-5 text-white relative overflow-hidden">
@@ -153,6 +150,9 @@ export default function Dashboard() {
           </div>
         </div>
       )}
+
+      {/* Level progress */}
+      <LevelProgressCard compact />
 
       {/* Daily challenge + Word of day */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
