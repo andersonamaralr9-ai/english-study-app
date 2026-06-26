@@ -34,8 +34,12 @@ export default function AdminPage() {
   const [search, setSearch] = useState('')
   const [expandedUser, setExpandedUser] = useState<string | null>(null)
   const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
   const [inviteRole, setInviteRole] = useState('user')
   const [inviteMsg, setInviteMsg] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
+  const [inviteResult, setInviteResult] = useState<{ email: string; tempPassword: string } | null>(null)
+  const [currentUserId, setCurrentUserId] = useState('')
   const [sortBy, setSortBy] = useState<'name' | 'total_minutes' | 'vocab_count' | 'avg_test_score'>('total_minutes')
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc')
 
@@ -56,6 +60,7 @@ export default function AdminPage() {
       }
 
       setIsAdmin(true)
+      setCurrentUserId(user.id)
 
       const { data } = await supabase
         .from('admin_user_overview')
@@ -422,27 +427,95 @@ export default function AdminPage() {
 
       {/* Invite */}
       {view === 'invite' && (
-        <div className="card space-y-4">
-          <h3 className="font-bold">Convidar Colaborador</h3>
-          <p className="text-sm text-[var(--muted)]">
-            Para convidar novos usuários, a maneira mais fácil é ir no <strong>Supabase Dashboard</strong> &gt; Authentication &gt; Users &gt; <strong>Invite User</strong>.
-            O colaborador receberá um email com link para criar a senha.
-          </p>
+        <div className="space-y-4">
+          <div className="card space-y-4">
+            <h3 className="font-bold">Adicionar Colaborador</h3>
+            <p className="text-sm text-[var(--muted)]">
+              Cadastre um novo colaborador diretamente. Ele receberá um email e senha temporária para acessar.
+            </p>
 
-          <div className="p-4 rounded-xl bg-[var(--primary-bg)]/50 space-y-2 text-sm">
-            <p className="font-medium">Passos:</p>
-            <ol className="list-decimal list-inside space-y-1 text-[var(--muted)]">
-              <li>Acesse o dashboard do Supabase do projeto</li>
-              <li>Vá em <strong>Authentication</strong> &gt; <strong>Users</strong></li>
-              <li>Clique em <strong>Invite User</strong></li>
-              <li>Digite o email do colaborador</li>
-              <li>Ele recebe o convite e cria a senha</li>
-              <li>Volte aqui em <strong>Usuários</strong> para dar nome e configurar</li>
-            </ol>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium mb-1">Email *</label>
+                <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="colaborador@empresa.com" className="input" type="email" required />
+              </div>
+              <div>
+                <label className="block text-xs font-medium mb-1">Nome</label>
+                <input value={inviteName} onChange={(e) => setInviteName(e.target.value)} placeholder="Nome do colaborador" className="input" />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium mb-1">Perfil</label>
+              <div className="flex gap-2">
+                <button onClick={() => setInviteRole('user')}
+                  className={`flex-1 p-2 rounded-xl border text-sm font-medium ${inviteRole === 'user' ? 'border-[var(--primary)] bg-[var(--primary-bg)] text-[var(--primary)]' : 'border-[var(--card-border)]'}`}>
+                  Colaborador
+                </button>
+                <button onClick={() => setInviteRole('admin')}
+                  className={`flex-1 p-2 rounded-xl border text-sm font-medium ${inviteRole === 'admin' ? 'border-red-500 bg-red-50 dark:bg-red-900/20 text-red-600' : 'border-[var(--card-border)]'}`}>
+                  Admin
+                </button>
+              </div>
+            </div>
+
+            <button onClick={async () => {
+              if (!inviteEmail.trim()) return
+              setInviteLoading(true); setInviteMsg(''); setInviteResult(null)
+              try {
+                const res = await fetch('/api/admin/invite', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ email: inviteEmail, name: inviteName, role: inviteRole, adminUserId: currentUserId }),
+                })
+                const data = await res.json()
+                if (data.error) { setInviteMsg(data.error) }
+                else {
+                  setInviteResult({ email: data.email, tempPassword: data.tempPassword })
+                  setInviteMsg('')
+                  setInviteEmail(''); setInviteName(''); setInviteRole('user')
+                  // Refresh user list
+                  const { data: refreshed } = await supabase.from('admin_user_overview').select('*')
+                  if (refreshed) setUsers(refreshed as UserOverview[])
+                }
+              } catch { setInviteMsg('Erro ao criar usuário.') }
+              setInviteLoading(false)
+            }} disabled={inviteLoading || !inviteEmail.trim()} className="btn-primary w-full flex items-center justify-center gap-2">
+              <UserPlus size={16} /> {inviteLoading ? 'Criando...' : 'Criar usuário'}
+            </button>
+
+            {inviteMsg && (
+              <div className="p-3 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-sm">{inviteMsg}</div>
+            )}
           </div>
 
-          {inviteMsg && (
-            <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-900/20 text-blue-600 text-sm">{inviteMsg}</div>
+          {/* Success result with credentials */}
+          {inviteResult && (
+            <div className="card border-emerald-500/30 bg-emerald-50/50 dark:bg-emerald-900/10 space-y-3">
+              <div className="flex items-center gap-2 text-emerald-600 font-bold">
+                <UserPlus size={16} /> Usuário criado com sucesso!
+              </div>
+              <div className="p-4 rounded-xl bg-[var(--card)] border border-[var(--card-border)] space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--muted)]">Email:</span>
+                  <span className="font-medium">{inviteResult.email}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-[var(--muted)]">Senha temporária:</span>
+                  <span className="font-mono font-bold text-[var(--primary)]">{inviteResult.tempPassword}</span>
+                </div>
+              </div>
+              <p className="text-xs text-[var(--muted)]">
+                Envie essas credenciais para o colaborador. Ele deve acessar <strong>english-amaral.vercel.app</strong> e fazer login. Recomende trocar a senha depois.
+              </p>
+              <button onClick={() => {
+                navigator.clipboard.writeText(`Email: ${inviteResult.email}\nSenha: ${inviteResult.tempPassword}\nAcesse: https://english-amaral.vercel.app`)
+                setInviteMsg('Copiado para a área de transferência!')
+                setTimeout(() => setInviteMsg(''), 2000)
+              }} className="btn-ghost w-full text-sm">
+                Copiar credenciais
+              </button>
+            </div>
           )}
         </div>
       )}
