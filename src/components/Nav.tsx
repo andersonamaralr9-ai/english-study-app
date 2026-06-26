@@ -3,9 +3,10 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState, useEffect } from 'react'
-import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings, Zap, Star } from 'lucide-react'
+import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, BarChart3, Home, Menu, X, GraduationCap, Settings, Zap, Star, Shield } from 'lucide-react'
 import { useLevel, LEVELS } from './LevelContext'
 import { getAPIUsage } from '@/lib/apiUsage'
+import { supabase } from '@/lib/supabase'
 
 const links = [
   { href: '/', label: 'Início', icon: Home },
@@ -25,12 +26,23 @@ export default function Nav() {
   const [open, setOpen] = useState(false)
   const { level, setLevel } = useLevel()
   const [apiUsage, setApiUsage] = useState({ count: 0, limit: 14400, percentage: 0 })
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const update = () => setApiUsage(getAPIUsage())
     update()
     const interval = setInterval(update, 5000)
     return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const { data } = await supabase.from('user_settings').select('role').eq('user_id', user.id).single()
+      if (data?.role === 'admin') setIsAdmin(true)
+    }
+    checkAdmin()
   }, [])
 
   if (pathname === '/login') return null
@@ -76,7 +88,7 @@ export default function Nav() {
           {/* Desktop nav - scrollable */}
           <div className="hidden md:block -mb-px">
             <div className="flex gap-0.5 overflow-x-auto scrollbar-hide pb-1">
-              {links.map(({ href, label, icon: Icon }) => {
+              {[...links, ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : [])].map(({ href, label, icon: Icon }) => {
                 const active = pathname === href
                 return (
                   <Link key={href} href={href}
@@ -100,7 +112,7 @@ export default function Nav() {
         <div className="md:hidden fixed inset-0 z-40 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)}>
           <div className="absolute top-14 left-0 right-0 bg-[var(--card)] border-b border-[var(--card-border)] shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="py-2">
-              {links.map(({ href, label, icon: Icon }) => {
+              {[...links, ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : [])].map(({ href, label, icon: Icon }) => {
                 const active = pathname === href
                 return (
                   <Link key={href} href={href} onClick={() => setOpen(false)}
