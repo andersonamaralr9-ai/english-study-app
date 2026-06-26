@@ -151,7 +151,7 @@ export default function VocabularioPage() {
             <div className="flex justify-center">
               <span className="badge bg-[var(--primary-bg)] text-[var(--primary)]">{currentIndex + 1} de {dueWords.length}</span>
             </div>
-            <Flashcard english={dueWords[currentIndex].english} portuguese={dueWords[currentIndex].portuguese} example={dueWords[currentIndex].example} onRate={handleRate} />
+            <Flashcard english={dueWords[currentIndex].english} portuguese={dueWords[currentIndex].portuguese} example={dueWords[currentIndex].example} category={dueWords[currentIndex].category} onRate={handleRate} />
           </div>
         ) : (
           <div className="card text-center py-16">
