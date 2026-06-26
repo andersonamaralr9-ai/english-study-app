@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
-import { getNextClassFromSchedule, getCEFRLevel, type ClassScheduleEntry } from '@/lib/constants'
+import { getNextClassFromSchedule, type ClassScheduleEntry } from '@/lib/constants'
+import { useLevel, LEVELS } from '@/components/LevelContext'
 import { isDueForReview } from '@/lib/srs'
 import { getDailyChallenge, getWordOfDay } from '@/lib/daily'
 import type { VocabWord, StudySession, TestResult } from '@/lib/supabase'
@@ -13,6 +14,7 @@ import LevelProgressCard from '@/components/LevelProgressCard'
 
 export default function Dashboard() {
   const router = useRouter()
+  const { level } = useLevel()
   const [loading, setLoading] = useState(true)
   const [vocabCount, setVocabCount] = useState(0)
   const [dueCount, setDueCount] = useState(0)
@@ -70,7 +72,7 @@ export default function Dashboard() {
   if (loading) return <div className="flex items-center justify-center h-64"><div className="spinner" /></div>
 
   const nextClass = getNextClassFromSchedule(classSchedule)
-  const cefr = getCEFRLevel(vocabCount, avgScore)
+  const levelInfo = LEVELS.find(l => l.key === level) || LEVELS[0]
 
   const daily = getDailyChallenge()
   const wordOfDay = getWordOfDay()
@@ -117,7 +119,7 @@ export default function Dashboard() {
         {[
           { icon: Flame, label: 'Streak', value: `${streak}`, unit: 'dias', color: 'text-orange-500', bg: 'bg-orange-500/10' },
           { icon: BookOpen, label: 'Palavras', value: `${vocabCount}`, unit: '', color: 'text-blue-500', bg: 'bg-blue-500/10' },
-          { icon: GraduationCap, label: 'Nível', value: cefr.level, unit: cefr.description, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { icon: GraduationCap, label: 'Nível', value: levelInfo.key, unit: levelInfo.desc, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
           { icon: Clock, label: 'Hoje', value: `${todayMinutes}`, unit: 'min', color: 'text-violet-500', bg: 'bg-violet-500/10' },
         ].map(({ icon: Icon, label, value, unit, color, bg }) => (
           <div key={label} className="card">
