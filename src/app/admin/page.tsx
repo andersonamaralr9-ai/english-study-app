@@ -346,18 +346,18 @@ export default function AdminPage() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2 flex-wrap">
+                  <div className="flex gap-2 flex-wrap items-center">
                     <button onClick={() => toggleRole(u.user_id, u.role)}
-                      className={`btn-ghost text-xs ${u.role === 'admin' ? 'text-red-600' : 'text-[var(--primary)]'}`}>
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${u.role === 'admin' ? 'border-red-300 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20' : 'border-[var(--primary)]/30 text-[var(--primary)] hover:bg-[var(--primary-bg)]'}`}>
                       {u.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
                     </button>
                     <button onClick={() => toggleActive(u.user_id, u.active)}
-                      className={`btn-ghost text-xs ${u.active ? 'text-amber-600' : 'text-emerald-600'}`}>
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border ${u.active ? 'border-amber-300 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-900/20' : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50 dark:hover:bg-emerald-900/20'}`}>
                       {u.active ? 'Inativar' : 'Reativar'}
                     </button>
                     <button onClick={() => deleteUser(u.user_id, u.email)}
-                      className="btn-ghost text-xs text-red-600">
-                      Excluir permanentemente
+                      className="px-3 py-1.5 rounded-lg text-xs font-medium border border-red-300 text-red-600 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30">
+                      Excluir
                     </button>
                   </div>
 
