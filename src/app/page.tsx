@@ -9,6 +9,7 @@ import { isDueForReview } from '@/lib/srs'
 import { getDailyChallenge, getWordOfDay } from '@/lib/daily'
 import type { VocabWord, StudySession, TestResult } from '@/lib/supabase'
 import { BookOpen, MessageCircle, PenTool, Headphones, ClipboardList, Flame, GraduationCap, Clock, LogOut, ChevronRight, Zap, Target, Volume2, Plus } from 'lucide-react'
+import LevelProgressCard from '@/components/LevelProgressCard'
 
 export default function Dashboard() {
   const router = useRouter()
@@ -128,6 +129,9 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Level progress */}
+      <LevelProgressCard compact />
 
       {/* Next class */}
       {nextClass && (

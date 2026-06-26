@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import type { VocabWord, StudySession, TestResult, WritingEntry, Conversation } from '@/lib/supabase'
 import { BarChart3, GraduationCap, BookOpen, Clock, Trophy, MessageCircle, PenTool, TrendingUp, Award, Calendar } from 'lucide-react'
 import { useLevel, LEVELS } from '@/components/LevelContext'
+import LevelProgressCard from '@/components/LevelProgressCard'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 export default function ProgressoPage() {
@@ -128,7 +129,10 @@ export default function ProgressoPage() {
         </div>
       </div>
 
-      {/* CEFR Level hero */}
+      {/* Level progress */}
+      <LevelProgressCard />
+
+      {/* Stats hero */}
       <div className="gradient-bg rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -translate-y-12 translate-x-12" />
         <div className="relative">
