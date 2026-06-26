@@ -10,7 +10,8 @@ function getAdminClient() {
 
 async function verifyAdmin(supabaseAdmin: ReturnType<typeof createClient>, adminUserId: string) {
   const { data } = await supabaseAdmin.from('user_settings').select('role').eq('user_id', adminUserId).single()
-  return data?.role === 'admin'
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (data as any)?.role === 'admin'
 }
 
 export async function POST(req: Request) {
