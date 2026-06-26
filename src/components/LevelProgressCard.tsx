@@ -74,10 +74,10 @@ export default function LevelProgressCard({ compact = false }: { compact?: boole
 
   if (compact) {
     return (
-      <Link href="/progresso" className="card card-interactive">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
-            <span className="text-white font-bold text-sm">{progress.overallPercent}%</span>
+      <Link href="/progresso" className="block p-4 rounded-2xl border border-[var(--card-border)] hover:shadow-lg transition-all" style={{ background: 'var(--card)' }}>
+        <div className="flex items-center gap-4">
+          <div className={`w-11 h-11 rounded-xl bg-gradient-to-br ${gradient} flex items-center justify-center flex-shrink-0`}>
+            <span className="text-white font-bold text-xs">{progress.overallPercent}%</span>
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ export default function LevelProgressCard({ compact = false }: { compact?: boole
               {progress.nextLevel && <span className="text-xs text-[var(--muted)]">→ {progress.nextLevel}</span>}
             </div>
             <p className="text-xs text-[var(--muted)]">{progress.message}</p>
-            <div className="mt-1.5 h-2 rounded-full bg-gray-100 dark:bg-gray-800 overflow-hidden">
+            <div className="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700 overflow-hidden">
               <div className={`h-full rounded-full bg-gradient-to-r ${gradient} transition-all duration-1000`} style={{ width: `${progress.overallPercent}%` }} />
             </div>
           </div>
